@@ -21,7 +21,7 @@
 
 import { createPublicClient, http, erc20Abi, getAddress, type Hex } from "viem";
 import { baseSepolia } from "viem/chains";
-import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
+import { privateKeyToAccount } from "viem/accounts";
 
 const FACILITATOR_URL = process.env.FACILITATOR_URL ?? "https://x402.org/facilitator";
 const NETWORK = "eip155:84532";
@@ -71,13 +71,20 @@ if (!exactHere) {
 }
 console.log(`OK: exact (x402Version 2) tersedia di ${NETWORK}`);
 
-// --- 2. Kunci pembayar ---
+// --- 2. Kunci pembayar (bun memuat .env dari cwd — jalankan dari root repo) ---
 section("Payer");
 const envKey = process.env.PROMIT_AGENT_PRIVATE_KEY;
-const funded = Boolean(envKey && envKey.length > 2);
-const account = privateKeyToAccount((funded ? envKey : generatePrivateKey()) as Hex);
+if (!envKey || envKey.length <= 2) {
+  console.error(
+    "SPIKE_KEY_MISSING: PROMIT_AGENT_PRIVATE_KEY tidak di-set.\n" +
+      "Buat .env di root repo berisi PROMIT_AGENT_PRIVATE_KEY=0x... (testnet-only, jangan commit),\n" +
+      "lalu jalankan lagi: bun run scripts/spike-facilitator.ts",
+  );
+  process.exit(4);
+}
+const account = privateKeyToAccount(envKey as Hex);
 const payTo = getAddress(process.env.PAY_TO_ADDRESS ?? account.address);
-console.log(`payer : ${account.address}${funded ? "" : " (EPHEMERAL — tanpa dana, settlement tidak akan terbukti)"}`);
+console.log(`payer : ${account.address}`);
 console.log(`payTo : ${payTo}`);
 
 const [balance, tokenName, tokenVersion] = await Promise.all([
@@ -90,6 +97,15 @@ const [balance, tokenName, tokenVersion] = await Promise.all([
   }),
 ]);
 console.log(`saldo USDC: ${balance} atomic; domain EIP-712 on-chain: name='${tokenName}' version='${tokenVersion}'`);
+
+if (balance < BigInt(AMOUNT_ATOMIC)) {
+  console.error(
+    `SPIKE_PAYER_UNFUNDED: saldo USDC ${balance} atomic < ${AMOUNT_ATOMIC} atomic yang dibutuhkan.\n` +
+      `Danai ${account.address} di https://faucet.circle.com (pilih Base Sepolia; ETH tidak perlu,\n` +
+      `gas dibayar facilitator), lalu jalankan lagi tanpa perubahan apa pun.`,
+  );
+  process.exit(4);
+}
 
 // --- 3. PaymentRequirements: peran server. Domain EIP-712 masuk ke extra,
 //        dan penandatanganan di bawah HANYA membaca dari extra (KTD18) ---
@@ -172,11 +188,7 @@ const verify = await facilitator("/verify", wrap(live));
 if (verify.json.isValid !== true) {
   section("HASIL");
   console.log(`verify GAGAL: invalidReason='${verify.json.invalidReason}' — settle dilewati.`);
-  if (!funded) {
-    console.log("PROMIT_AGENT_PRIVATE_KEY tidak di-set: jalankan lagi dengan kunci ber-USDC untuk membuktikan settlement.");
-  } else {
-    console.log("Kunci di-set tapi verify tetap gagal — cek saldo USDC di atas.");
-  }
+  console.log("Saldo cukup tapi verify tetap gagal — baca invalidMessage di atas.");
   process.exit(2);
 }
 console.log(`OK: isValid=true, payer=${verify.json.payer}`);

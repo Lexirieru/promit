@@ -386,3 +386,136 @@ forge verify-contract <ADDR> src/PromitRegistry.sol:PromitRegistry \
 - Apakah `landingpage` dan `frontend` tetap dua app terpisah atau digabung.
 - Struktur `smartcontract` di repo utama masih git repo bersarang; di worktree ini sudah
   diperbaiki jadi submodule biasa yang terdaftar di root `.gitmodules`.
+
+---
+
+## 12. Temuan U15 — kontrak facilitator x402 yang teramati (live, 2026-08-07)
+
+Semua di bawah ini diamati langsung dari `https://x402.org/facilitator` oleh
+`scripts/spike-facilitator.ts` — bukan disalin dari dokumentasi. U4 ditulis
+melawan kontrak ini. Infrastruktur: Vercel di belakang Cloudflare
+(`x-vercel-id`, `cf-ray`); verifikasi internal memakai `viem@2.48.11` dan
+mensimulasikan `transferWithAuthorization` lewat `eth_call`, bukan memulihkan
+tanda tangan secara lokal — konsekuensinya ada di bagian error di bawah.
+
+### Status yang terbukti dan yang belum
+
+- **Terbukti:** bentuk wire v2, encoding EIP-712 (domain dari `extra`), dan
+  pemulihan `payer` — `/verify` mengembalikan `payer` yang sama dengan alamat
+  penandatangan dan menolak **hanya** karena saldo
+  (`invalid_exact_evm_insufficient_balance`) pada kunci bersaldo 0. Otorisasi
+  kedaluwarsa ditolak dengan error bernama.
+- **BELUM terbukti: settle live** (butuh kunci ber-USDC). Wallet demo tetap:
+  `0xadE939F26516c657fc01f2eD1B069562b672644c` (kuncinya di `.env`, tidak
+  di-commit). Danai sekali di https://faucet.circle.com (Base Sepolia), lalu
+  `bun run scripts/spike-facilitator.ts` dari root tanpa perubahan kode.
+
+### Endpoint
+
+| Endpoint | Metode | Fungsi |
+|---|---|---|
+| `/supported` | GET | daftar `kinds` + `extensions` + `signers` |
+| `/verify` | POST | validasi payload tanpa on-chain write |
+| `/settle` | POST | verifikasi ulang lalu kirim tx on-chain (facilitator bayar gas) |
+
+`GET /supported` mengembalikan `{kinds, extensions, signers}`. Entri yang
+Promit pakai: `{"x402Version":2,"scheme":"exact","network":"eip155:84532"}`
+(tanpa `extra`). Signer EVM facilitator: `signers["eip155:*"] =
+["0xd407e409E34E0b9afb99EcCeb609bDbcD5e7f1bf"]` — alamat inilah `sender` tx
+settlement on-chain, berguna untuk mencocokkan event di Basescan.
+
+### Bentuk request (identik untuk /verify dan /settle)
+
+```jsonc
+{
+  "x402Version": 2,
+  "paymentPayload": {
+    "x402Version": 2,
+    "accepted": { /* PaymentRequirements yang dipilih klien — sama seperti di bawah */ },
+    "payload": {
+      "signature": "0x…",                  // 65-byte ECDSA atas TransferWithAuthorization
+      "authorization": {
+        "from": "0x…", "to": "0x…",
+        "value": "10000",                   // string desimal, atomic (6 desimal USDC)
+        "validAfter": "0", "validBefore": "1786048422",  // string unix-seconds
+        "nonce": "0x…"                      // bytes32 acak, sekali pakai per (from,nonce)
+      }
+    }
+  },
+  "paymentRequirements": {                  // peran server (U4 yang menyusun ini)
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "amount": "10000",
+    "payTo": "0x…",
+    "maxTimeoutSeconds": 300,
+    "extra": { "name": "USDC", "version": "2" }   // domain EIP-712 — WAJIB (lihat error)
+  }
+}
+```
+
+Catatan penting untuk U4:
+
+- Nama field v2 adalah `accepted` (bukan `paymentRequirements` v1 di dalam
+  payload) dan `amount` (bukan `maxAmountRequired` v1). Angka dikirim sebagai
+  **string**, waktu sebagai string unix-seconds.
+- Domain EIP-712 dibaca facilitator dari `paymentRequirements.extra.name/version`
+  (terverifikasi on-chain: Base Sepolia USDC melaporkan `name='USDC'`,
+  `version='2'` — beda dengan mainnet `USD Coin`). Tanpa `extra` →
+  `invalid_exact_evm_missing_eip712_domain`.
+- Tipe EIP-712: `TransferWithAuthorization(address from,address to,uint256
+  value,uint256 validAfter,uint256 validBefore,bytes32 nonce)`,
+  `chainId` 84532, `verifyingContract` = alamat USDC.
+
+### Bentuk respons
+
+`POST /verify` — `{isValid, invalidReason?, invalidMessage?, payer?}`:
+
+```json
+{ "isValid": false,
+  "invalidReason": "invalid_exact_evm_insufficient_balance",
+  "payer": "0x9f09CeC811D1fBa47568Ea1397e4C1D0BD8B065F",
+  "invalidMessage": "The contract function \"transferWithAuthorization\" reverted … ERC20: transfer amount exceeds balance …" }
+```
+
+`POST /settle` — `{success, errorReason?, errorMessage?, transaction, network, payer?}`;
+saat gagal `transaction` adalah **string kosong**, bukan absen/null:
+
+```json
+{ "success": false, "errorReason": "invalid_exact_evm_insufficient_balance",
+  "errorMessage": "…", "transaction": "", "network": "eip155:84532", "payer": "0x…" }
+```
+
+### Katalog error yang teramati
+
+| Skenario | HTTP | Field pembeda |
+|---|---|---|
+| Body kosong / field hilang | **400** | verify: `invalidReason:"missing_parameters"`; settle: `errorReason:"missing_parameters"`, plus `network:"unknown:unknown"` |
+| Skema tak terdaftar | **500** | `invalidReason:"unexpected_error"`, pesan `No facilitator registered for scheme: … and network: …` |
+| Network tak terdaftar (mis. `eip155:1`) | **500** | sama seperti di atas |
+| Otorisasi kedaluwarsa (`validBefore` lampau) | 200 | `invalid_exact_evm_payload_authorization_valid_before` |
+| Saldo tidak cukup | 200 | `invalid_exact_evm_insufficient_balance` |
+| `amount` requirements ≠ nilai yang ditandatangani | 200 | `invalid_exact_evm_payload_authorization_value_mismatch` |
+| `extra` tanpa `name`/`version` | 200 | `invalid_exact_evm_missing_eip712_domain` |
+| Tanda tangan rusak | 200 | **MENYESATKAN:** dilabel `invalid_exact_evm_insufficient_balance`; penyebab asli hanya terlihat di `invalidMessage` (`ECRecover: invalid signature 'v' value`) |
+
+Implikasi untuk U4:
+
+1. **Tangani tiga kelas HTTP:** 200 (hasil, sukses ataupun tolak), 400
+   (request cacat), 500 (skema/network tak dikenal). Error 4xx/5xx tetap
+   ber-body JSON dengan bentuk yang sama plus field `error` duplikat dari
+   `invalidMessage`/`errorMessage`.
+2. **Jangan cabangkan logika dari `invalid_exact_evm_insufficient_balance`
+   saja** — label itu dipakai untuk *setiap* revert simulasi, termasuk tanda
+   tangan rusak. Log `invalidMessage` untuk diagnosis; jangan tampilkan ke klien
+   (bocor detail internal + versi viem facilitator).
+3. **`/settle` memverifikasi ulang secara penuh** — verify-lalu-settle tidak
+   atomik tapi settle sendiri aman dipanggil; kegagalan datang sebagai
+   `success:false` bernama, bukan HTTP error.
+4. **`payer` di respons gagal adalah klaim `authorization.from`**, bukan hasil
+   pemulihan tanda tangan yang tervalidasi (terbukti dari kasus tanda tangan
+   rusak yang tetap mengembalikan `payer`). Jangan pakai `payer` dari respons
+   gagal untuk atribusi.
+5. Latensi teramati: `/verify` ±300–700 ms, `/supported` ±200 ms (dari CGK;
+   region Vercel `iad1`). Sediakan timeout ≥10 s untuk `/settle` karena ia
+   menunggu inklusi tx.
