@@ -1,10 +1,10 @@
-# backend/ — Promit API (U3) di atas modul katalog (U2)
+# backend/ — Promit API (U3) di atas modul katalog (U2), unlock x402 (U4)
 
 Bun package. `bun test` / `bun run typecheck` / `bun run dev` (server,
 port 3001) / `bun run mirror` from this directory. U2 owns everything under
 `src/catalog/`, `scripts/mirror-media.ts`, and `data/catalog.json`; U3 owns
 `src/index.ts`, `src/routes/catalog.ts`, `src/middleware/cors.ts`,
-`src/db.ts`.
+`src/db.ts`; U4 owns `src/x402/` and `src/routes/unlock.ts`.
 
 ## API contract (U3<->U5, locked by the coordinator 2026-08-07)
 
@@ -16,7 +16,11 @@ change a path or shape without a decision_gate.
   `?category=<name>&tier=<free|paid>`. Unknown filter values return an
   empty list, **not** an error.
 - `GET /v1/catalog/:id` → bare PublicEntry; 404 for unknown ids.
-- `GET /v1/prompts/:id` → U4's x402 unlock route (not built here).
+- `GET /v1/prompts/:id` → the x402 unlock route (U4, see its section
+  below). Free tier: 200 `{ id, tier, text, contentHash, attribution }`,
+  no payment. Paid success: 200 with the same fields plus `txHash`,
+  `network`, `payer` — text, tx hash, AND content hash in the body is the
+  locked contract.
 - `GET /health` → `{ ok: true }`.
 - `GET /media/*` → committed mirror output, traversal-guarded.
 - Errors are `{ error: "<snake_case_code>", message: "<sentence>" }`.
@@ -50,6 +54,49 @@ includes `settled_but_undelivered` for U4's onAfterSettle hook), and
 `insertListing` validates via `PublicCatalogEntrySchema` **before**
 writing, so an invalid listing never enters the table). Tests use
 `openDb(":memory:")` and inject via `createApp({ catalog, db })`.
+
+## Unlock route x402 (U4) — jalur uang
+
+`src/x402/server.ts` (resource server + facilitator + hook),
+`src/x402/pricing.ts` (harga per prompt dari union seed+listing),
+`src/routes/unlock.ts` (rutenya), mounted `/v1/prompts` in `index.ts`.
+Ditulis melawan kontrak facilitator yang DIAMATI di
+`docs/ARCHITECTURE.md` §12 — baca itu dulu sebelum menyentuh file ini.
+
+**Aturan urutan settlement (jangan pernah dibalik):** resolve body →
+tulis baris unlock `pending` → settle → hook `onAfterSettle` menulis
+`settled_but_undelivered` (uang sudah pindah, body belum keluar) →
+deliver → `delivered`. Settlement terjadi DI DALAM handler
+(`processHTTPRequest` + `processSettlement` langsung), bukan lewat
+middleware `paymentMiddleware` bawaan @x402/hono: middleware itu settle
+SETELAH handler menghasilkan body, sehingga (a) tx hash tak mungkin
+masuk body sukses seperti yang dikunci kontrak, dan (b) body yang hilang
+baru ketahuan setelah pembeli terpotong.
+
+- `settle.success` + tx hash adalah SATU-SATUNYA sinyal unlock (R10);
+  payload yang lolos verify masih bisa gagal settle. Hook afterSettle
+  juga terpanggil untuk penolakan (`success:false`) — selalu cek.
+- §12 traps yang sudah ditangani: facilitator HTTP 500 (skema/network
+  asing) dinormalkan library jadi 402 bersih; label
+  `invalid_exact_evm_insufficient_balance` BOHONG untuk tanda tangan
+  rusak (errorMessage di-log server-side, tidak pernah diteruskan —
+  bocor internal); `payer` di respons GAGAL cuma echo `authorization.from`
+  (atribusi hanya dari respons sukses).
+- Timeout `/settle` = hasil TAK TENTU (`settlement_indeterminate`, 502):
+  facilitator mungkin tetap settle; baris `pending` menjaga jejak.
+  Jangan pernah laporkan sebagai kegagalan bersih.
+- Domain EIP-712 di `accepts[].extra` dibaca dari tabel `getDefaultAsset`
+  @x402/evm dan di-assert terhadap alamat USDC yang dipin (KTD18) —
+  jangan pernah tulis konstanta `name`/`version` lokal.
+- Env: `PAY_TO_ADDRESS` (wallet polos, JANGAN alamat proxy registry —
+  KTD3; tanpa ini paid unlock menolak 503, free tetap jalan) dan
+  `FACILITATOR_URL` (default `https://x402.org/facilitator`;
+  `facilitator.x402.org` di README = NXDOMAIN).
+- Tes memalsukan facilitator di seam `FacilitatorClient` sehingga semua
+  bentuk wire di atasnya (header PAYMENT-*, pencocokan `accepted` yang
+  strict-deep-equal terhadap requirements) adalah kode library asli.
+  Klien tes harus meng-echo `accepts[0]` hasil decode PAYMENT-REQUIRED
+  apa adanya — ubah satu field saja dan matching gagal.
 
 ## The one rule that matters
 
