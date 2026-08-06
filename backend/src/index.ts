@@ -7,6 +7,7 @@ import { loadCatalogFile } from "./catalog/index.ts";
 import { openDb } from "./db.ts";
 import { paymentCors } from "./middleware/cors.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { unlockRoutes } from "./routes/unlock.ts";
 
 /**
  * The Promit API (U3): public catalog + health + mirrored media, with the
@@ -36,6 +37,11 @@ export function createApp(options: AppOptions = {}) {
   app.get("/health", (c) => c.json({ ok: true }));
 
   app.route("/v1/catalog", catalogRoutes({ catalog, db }));
+
+  // U4: the x402-gated unlock route. payTo/facilitator come from
+  // PAY_TO_ADDRESS / FACILITATOR_URL; paymentCors above already exposes the
+  // PAYMENT-* headers this route depends on.
+  app.route("/v1/prompts", unlockRoutes({ catalog, db }));
 
   // R5: previews come from Promit-owned storage. backend/media/ is the
   // mirror output U2 committed; catalog media fields are /media/<file>.
