@@ -1,0 +1,35 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.26"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+
+# Required by openzeppelin-foundry-upgrades: the plugin shells out to
+# `npx @openzeppelin/upgrades-core` and reads the AST + storage layout to
+# validate upgrade safety. Removing any of these silently disables validation.
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
+
+[profile.ci]
+verbosity = 4
+
+[rpc_endpoints]
+base_sepolia = "https://sepolia.base.org"
+base = "https://mainnet.base.org"
+
+# Etherscan V2: one etherscan.io key serves every chain, selected by `chain`.
+# Keys issued by basescan.org (V1) no longer work.
+[etherscan]
+base_sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 84532 }
+base = { key = "${ETHERSCAN_API_KEY}", chain = 8453 }
+
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = false
+int_types = "long"

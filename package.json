@@ -1,0 +1,8 @@
+{
+  "name": "promit",
+  "private": true,
+  "workspaces": [
+    "{frontend,backend,cli,mcp}",
+    "packages/*"
+  ]
+}

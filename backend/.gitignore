@@ -1,0 +1,8 @@
+# raw media downloads — only the optimized media/ output is committed
+.media-cache/
+# runtime store (KTD17): paid bodies and unlock records must never be committed
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+# U16's workspace root owns dependency locking; a nested lock would go stale
+bun.lock
