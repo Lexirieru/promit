@@ -1,0 +1,4 @@
+# raw media downloads — only the optimized media/ output is committed
+.media-cache/
+# U16's workspace root owns dependency locking; a nested lock would go stale
+bun.lock
