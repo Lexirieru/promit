@@ -3,8 +3,9 @@ pragma solidity 0.8.26;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {
+    AccessControlUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 /// @title PromitRegistry
 /// @notice On-chain record of listed prompts and settled unlocks. The registry never custodies
@@ -81,11 +82,12 @@ contract PromitRegistry is Initializable, UUPSUpgradeable, AccessControlUpgradea
     /// @notice Records a listing. The backend verifies the creator's signature (AE10) and
     ///         computes the content hash before writing, so writes are settler-gated and
     ///         `creator` is an explicit parameter rather than msg.sender.
-    function registerListing(address creator, bytes32 contentHash, uint256 price, string calldata metadataURI)
-        external
-        onlyRole(SETTLER_ROLE)
-        returns (uint256 listingId)
-    {
+    function registerListing(
+        address creator,
+        bytes32 contentHash,
+        uint256 price,
+        string calldata metadataURI
+    ) external onlyRole(SETTLER_ROLE) returns (uint256 listingId) {
         if (creator == address(0)) revert ZeroAddress();
         if (contentHash == bytes32(0)) revert ZeroContentHash();
         if (price == 0) revert ZeroPrice();
