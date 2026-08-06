@@ -1,8 +1,55 @@
-# backend/ — catalog module (U2)
+# backend/ — Promit API (U3) di atas modul katalog (U2)
 
-Bun package. `bun test` / `bun run typecheck` / `bun run mirror` from this
-directory. U3 adds the Hono server on top; U2 owns everything under
-`src/catalog/`, `scripts/mirror-media.ts`, and `data/catalog.json`.
+Bun package. `bun test` / `bun run typecheck` / `bun run dev` (server,
+port 3001) / `bun run mirror` from this directory. U2 owns everything under
+`src/catalog/`, `scripts/mirror-media.ts`, and `data/catalog.json`; U3 owns
+`src/index.ts`, `src/routes/catalog.ts`, `src/middleware/cors.ts`,
+`src/db.ts`.
+
+## API contract (U3<->U5, locked by the coordinator 2026-08-07)
+
+The frontend hardcodes these in `frontend/src/lib/api.ts`
+(`NEXT_PUBLIC_PROMIT_API_URL`, default `http://localhost:3001`). Do not
+change a path or shape without a decision_gate.
+
+- `GET /v1/catalog` → `{ entries: PublicEntry[], total }`; optional
+  `?category=<name>&tier=<free|paid>`. Unknown filter values return an
+  empty list, **not** an error.
+- `GET /v1/catalog/:id` → bare PublicEntry; 404 for unknown ids.
+- `GET /v1/prompts/:id` → U4's x402 unlock route (not built here).
+- `GET /health` → `{ ok: true }`.
+- `GET /media/*` → committed mirror output, traversal-guarded.
+- Errors are `{ error: "<snake_case_code>", message: "<sentence>" }`.
+- **No `body` field in any catalog response, free tier included** — free
+  text is delivered by `/v1/prompts/:id` only, so prompt text has exactly
+  one delivery path.
+
+The catalog id space is the **union** of seed entries and creator listings
+(SQLite); seed wins on collision. `listingToPublicEntry()` re-parses every
+listing through `PublicCatalogEntrySchema`, the same mechanical no-body
+guarantee `listPublicEntries()` gives seed entries.
+
+## CORS (the confusing-failure trap)
+
+`src/middleware/cors.ts` exposes `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE`
+and allows `PAYMENT-SIGNATURE`. Browsers null out any cross-origin response
+header not in `Access-Control-Expose-Headers` even though DevTools shows it
+on the wire — drop the expose list and the browser payment client sees no
+payment requirements and no tx hash while every request "succeeds". Keep
+U4's unlock route under this same middleware (`app.use("*", …)` already
+covers it).
+
+## SQLite runtime store (`src/db.ts`, KTD17)
+
+`data/promit.sqlite`, gitignored, WAL. Three tables, three writers:
+`paid_bodies` (U4/U7 write, unlock route reads), `unlocks` (U4 writes,
+U10 drains on-chain; PK `(payer, payment_nonce)` with payer lowercased on
+every access so EIP-55 casing can't defeat R19 idempotency; status enum
+includes `settled_but_undelivered` for U4's onAfterSettle hook), and
+`listings` (U7; `content_hash` UNIQUE = duplicate detection;
+`insertListing` validates via `PublicCatalogEntrySchema` **before**
+writing, so an invalid listing never enters the table). Tests use
+`openDb(":memory:")` and inject via `createApp({ catalog, db })`.
 
 ## The one rule that matters
 

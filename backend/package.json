@@ -3,12 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
     "mirror": "bun run scripts/mirror-media.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@promit/x402-client": "workspace:*",
+    "hono": "^4.13.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
