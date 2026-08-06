@@ -8,10 +8,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@promit/x402-client": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/bun": "^1.3.9",
+    "js-sha3": "^0.9.3",
     "typescript": "^5"
   }
 }

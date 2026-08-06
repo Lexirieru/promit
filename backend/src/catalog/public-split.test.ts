@@ -21,7 +21,7 @@ const fixtureCatalog: CatalogFile = {
       poster: null,
       priceAtomic: "0",
       tier: "free",
-      contentHash: `sha256:${"a".repeat(64)}`,
+      contentHash: `keccak256:${"a".repeat(64)}`,
       attribution: {
         source: "motionsites.ai",
         capturedAt: "2026-08-06T19:05:20.629Z",

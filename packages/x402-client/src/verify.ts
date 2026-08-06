@@ -30,6 +30,16 @@ export interface ContentHashCheck {
 }
 
 /**
+ * The same digest travels under two renderings: the registry's bytes32 shows
+ * up 0x-prefixed, the catalog's `contentHash` as "keccak256:" + hex (the
+ * prefix versions the rule, per docs/CONTENT-HASH.md). Comparison is over the
+ * digest, so a buyer can hand either form to the verifier.
+ */
+function digestOf(hash: string): string {
+  return hash.toLowerCase().replace(/^(keccak256:|0x)/, "");
+}
+
+/**
  * Post-unlock check: recomputes the delivered text's hash and compares it to
  * the value the registry records. Returns a report instead of a boolean so a
  * mismatch can be shown with both hashes rather than swallowed.
@@ -37,7 +47,7 @@ export interface ContentHashCheck {
 export function verifyContentHash(deliveredText: string, expectedHash: string): ContentHashCheck {
   const actualHash = hashPromptText(deliveredText);
   return {
-    ok: actualHash.toLowerCase() === expectedHash.toLowerCase(),
+    ok: digestOf(actualHash) === digestOf(expectedHash),
     actualHash,
     expectedHash,
   };

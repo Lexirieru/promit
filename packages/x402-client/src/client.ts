@@ -25,7 +25,7 @@ export interface SpendPolicy {
 }
 
 /** Plain call signature so mocks and wrapped fetches interchange freely. */
-export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (input: Request | string | URL, init?: RequestInit) => Promise<Response>;
 
 function denominationViolations(requirement: PaymentRequirements, index: number): PolicyViolation[] {
   const violations: PolicyViolation[] = [];
@@ -140,7 +140,7 @@ export interface PromitFetchOptions {
 
 export interface PromitFetchHandle {
   /** Drop-in fetch that answers 402 challenges within the spend policy. */
-  fetchWithPayment: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  fetchWithPayment: (input: Request | string | URL, init?: RequestInit) => Promise<Response>;
   client: x402Client;
   ledger: SpendLedger;
   policy: SpendPolicy;
@@ -217,7 +217,7 @@ export function createPromitFetch(options: PromitFetchOptions): PromitFetchHandl
   };
 }
 
-function hasPaymentSignature(input: RequestInfo | URL, init?: RequestInit): boolean {
+function hasPaymentSignature(input: Request | string | URL, init?: RequestInit): boolean {
   if (init?.headers && new Headers(init.headers).has("PAYMENT-SIGNATURE")) {
     return true;
   }

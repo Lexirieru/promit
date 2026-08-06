@@ -75,8 +75,8 @@ export const PublicCatalogEntrySchema = z.object({
   /** Price in atomic USDC units (6 decimals), as a string. "0" = free. */
   priceAtomic: z.string().regex(/^\d+$/),
   tier: TierSchema,
-  /** Content hash per docs/CONTENT-HASH.md, e.g. "sha256:ab12…". */
-  contentHash: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  /** Content hash per docs/CONTENT-HASH.md, e.g. "keccak256:ab12…". */
+  contentHash: z.string().regex(/^keccak256:[0-9a-f]{64}$/),
   attribution: AttributionSchema,
 });
 export type PublicCatalogEntry = z.infer<typeof PublicCatalogEntrySchema>;

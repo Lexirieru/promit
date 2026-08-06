@@ -56,7 +56,7 @@ describe("normalizeSeed on the real capture", () => {
   test("content hash is computed over the body per the published rule", () => {
     for (const entry of entries) {
       expect(entry.contentHash).toBe(computeContentHash(entry.body));
-      expect(entry.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(entry.contentHash).toMatch(/^keccak256:[0-9a-f]{64}$/);
     }
   });
 });

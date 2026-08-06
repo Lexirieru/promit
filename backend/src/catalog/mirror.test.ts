@@ -17,7 +17,7 @@ function draft(overrides: Partial<SeedEntryDraft> = {}): SeedEntryDraft {
       "https://pub-86dc5b5484314368ac5436a674b0d919.r2.dev/hero%20sections/animated%20(59).webp",
     priceAtomic: "0",
     tier: "free",
-    contentHash: `sha256:${"a".repeat(64)}`,
+    contentHash: `keccak256:${"a".repeat(64)}`,
     attribution: {
       source: "motionsites.ai",
       capturedAt: "2026-08-06T19:05:20.629Z",

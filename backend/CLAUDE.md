@@ -58,12 +58,17 @@ gif→animated-webp is not an available path. Don't rediscover this dead end.
 
 ## Content hash
 
-`computeContentHash()` in `src/catalog/hash.ts` implements the **published**
-rule in `docs/CONTENT-HASH.md` (NFC → CRLF/CR→LF → edge-trim → SHA-256 →
-`sha256:` + lowercase hex). The doc is the protocol: never change the
-function without changing the doc, the prefix, and every stored hash in the
-same commit. Tests replay the doc's Python snippet as an independent
-implementation.
+`computeContentHash()` in `src/catalog/hash.ts` renders the **published**
+rule in `docs/CONTENT-HASH.md` (CRLF/CR→LF → strip trailing whitespace →
+keccak256 → `keccak256:` + lowercase hex). The rule itself is imported from
+`@promit/x402-client` (`hashPromptText`), never re-implemented, so the
+minted hash and the buyer-side verifier (AE7) cannot diverge —
+`content-hash-seam.test.ts` pins that seam, including every shipped catalog
+entry. keccak256, not SHA-256, because `PromitRegistry` stores the digest as
+a native EVM `bytes32` (`0x`-prefixed rendering of the same digest). The doc
+is the protocol: never change the rule without changing the doc, the prefix,
+and every stored hash in the same commit. Tests extract the doc's `js-sha3`
+snippet and run it verbatim as an independent implementation.
 
 ## Traps learned building this
 
