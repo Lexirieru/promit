@@ -19,6 +19,14 @@ backend settler writes records after settlement. Plan authority:
   `ERC1967Proxy` (fast, no ffi). `test/PromitRegistryUpgrade.t.sol` — validator and
   upgrade paths through `openzeppelin-foundry-upgrades` (ffi → `npx
   @openzeppelin/upgrades-core`, needs node; first run downloads the package).
+- `script/DeployPromitRegistry.s.sol` — deploy U9 via `Upgrades.deployUUPSProxy`: proxy +
+  initializer dalam satu transaksi. `SETTLER_ADDRESS` dan `UPGRADE_ADMIN_ADDRESS` dibaca
+  dari env, dan script MENOLAK (error bernama, sebelum broadcast) bila settler, admin,
+  atau deployer ada yang sama — jangan lemahkan guard ini demi kemudahan deploy.
+- `script/UpgradePromitRegistry.s.sol` — pindahkan proxy ke V2. Pre-flight cek sender
+  memegang `UPGRADER_ROLE` (broadcast dengan kunci upgrade admin, bukan deployer).
+  Meng-import `PromitRegistryV2` hanya demi artefaknya ada di build-info (jebakan
+  dynamic linking yang sama dengan fixture bad-layout). Runbook lengkap: `README.md`.
 
 ## Invariants the tests encode
 
@@ -48,10 +56,25 @@ backend settler writes records after settlement. Plan authority:
   validation:`. The rejection test asserts the former so a broken validator cannot pass.
 - In tests, reading a public constant like `registry.SETTLER_ROLE()` is an external call
   and consumes a pending `vm.prank` — read role constants into locals before pranking.
+- `deployedBytecode` di artefak punya slot immutable berisi NOL. `UUPSUpgradeable.__self`
+  adalah immutable, jadi implementasi yang di-graft ke node via `anvil_setCode` gagal
+  `onlyProxy` dengan `UUPSUnauthorizedCallContext` — patch dulu offset di
+  `deployedBytecode.immutableReferences` dengan alamat targetnya. Dipakai untuk gladi
+  resik script upgrade tanpa broadcast (proxy sintetis di anvil, `forge script` simulasi).
+- Sender default `forge script` tanpa kunci adalah
+  `0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38`; guard pemisahan role membandingkan env
+  dengan `msg.sender`, jadi simulasi tanpa kunci lolos selama alamat env berbeda darinya.
 
-## Verification (U8 gates)
+## Verification (U8 + U9 gates)
 
 ```
 cd smartcontract && forge clean && forge test
 cd smartcontract && forge fmt --check
+# Simulasi deploy (tanpa --broadcast; alamat dummy harus berbeda satu sama lain):
+cd smartcontract && forge clean && \
+  SETTLER_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8 \
+  UPGRADE_ADMIN_ADDRESS=0x3C44CdDdB6a900fA2b585dd299e03d12FA4293BC \
+  forge script script/DeployPromitRegistry.s.sol:DeployPromitRegistry --rpc-url base_sepolia
 ```
+
+Deploy/verify/upgrade sungguhan (butuh kunci berdana ETH): runbook di `README.md`.
