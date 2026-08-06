@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@promit/x402-client": "workspace:*",
+    "hono": "^4.13.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
