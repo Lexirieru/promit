@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ChevronDown, Menu, X, Zap } from "lucide-react";
 
-const NAV_LINKS = [
-  { label: "Gallery", hasDropdown: false },
+// `href` is optional: only Gallery has a destination so far (U5); the rest
+// stay inert buttons until their surfaces exist.
+const NAV_LINKS: { label: string; hasDropdown: boolean; href?: string }[] = [
+  { label: "Gallery", hasDropdown: false, href: "/prompts" },
   { label: "For Agents", hasDropdown: true },
   { label: "For Creators", hasDropdown: false },
   { label: "Docs", hasDropdown: false },
@@ -25,16 +28,26 @@ export default function Nav() {
         </div>
 
         <div className="hidden gap-8 md:flex">
-          {NAV_LINKS.map(({ label, hasDropdown }) => (
-            <button
-              key={label}
-              type="button"
-              className="flex items-center gap-1 text-sm text-gray-700 transition-colors hover:text-black"
-            >
-              {label}
-              {hasDropdown && <ChevronDown className="h-4 w-4" />}
-            </button>
-          ))}
+          {NAV_LINKS.map(({ label, hasDropdown, href }) =>
+            href ? (
+              <Link
+                key={label}
+                href={href}
+                className="flex items-center gap-1 text-sm text-gray-700 transition-colors hover:text-black"
+              >
+                {label}
+              </Link>
+            ) : (
+              <button
+                key={label}
+                type="button"
+                className="flex items-center gap-1 text-sm text-gray-700 transition-colors hover:text-black"
+              >
+                {label}
+                {hasDropdown && <ChevronDown className="h-4 w-4" />}
+              </button>
+            ),
+          )}
         </div>
 
         <div className="hidden items-center gap-4 sm:flex">
@@ -66,16 +79,27 @@ export default function Nav() {
       {menuOpen && (
         <div className="animate-fade-in-overlay absolute inset-x-0 top-[60px] z-30 border-b border-gray-200 bg-white/95 backdrop-blur-md">
           <div className="flex flex-col gap-4 px-6 py-4">
-            {NAV_LINKS.map(({ label, hasDropdown }) => (
-              <button
-                key={label}
-                type="button"
-                className="flex items-center gap-1 text-left text-sm text-gray-700 transition-colors hover:text-black"
-              >
-                {label}
-                {hasDropdown && <ChevronDown className="h-4 w-4" />}
-              </button>
-            ))}
+            {NAV_LINKS.map(({ label, hasDropdown, href }) =>
+              href ? (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-1 text-left text-sm text-gray-700 transition-colors hover:text-black"
+                >
+                  {label}
+                </Link>
+              ) : (
+                <button
+                  key={label}
+                  type="button"
+                  className="flex items-center gap-1 text-left text-sm text-gray-700 transition-colors hover:text-black"
+                >
+                  {label}
+                  {hasDropdown && <ChevronDown className="h-4 w-4" />}
+                </button>
+              ),
+            )}
             <div className="flex flex-col gap-4 border-t border-gray-200 pt-4">
               <button
                 type="button"
