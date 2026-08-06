@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@promit/x402-client": "workspace:*",
+    "@x402/core": "2.21.0",
+    "@x402/evm": "2.21.0",
+    "@x402/hono": "2.21.0",
     "hono": "^4.13.0",
     "zod": "^4.1.12"
   },
