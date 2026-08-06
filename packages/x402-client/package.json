@@ -1,0 +1,24 @@
+{
+  "name": "@promit/x402-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared x402 payment client for Promit: policy filter, spend caps, payment hook, and post-unlock content-hash verification. Browser, CLI, and MCP all import payment logic from here.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@x402/core": "2.21.0",
+    "@x402/evm": "2.21.0",
+    "@x402/fetch": "2.21.0",
+    "viem": "^2.44.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "typescript": "^5.9.3"
+  }
+}
