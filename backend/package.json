@@ -1,0 +1,17 @@
+{
+  "name": "@promit/backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mirror": "bun run scripts/mirror-media.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "typescript": "^5"
+  }
+}
