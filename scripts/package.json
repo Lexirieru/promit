@@ -1,0 +1,8 @@
+{
+  "name": "promit-scripts",
+  "private": true,
+  "description": "Throwaway spike scripts (U15). Bukan bagian dari workspace; dependensi berdiri sendiri agar `bun run scripts/spike-facilitator.ts` tetap jalan setelah root workspace dibuat.",
+  "dependencies": {
+    "viem": "2.55.11"
+  }
+}
