@@ -47,3 +47,7 @@ tsconfig.tsbuildinfo
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# environment (kunci demo lokal, jangan pernah commit)
+.env
+.env.local
