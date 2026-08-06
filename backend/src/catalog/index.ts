@@ -17,6 +17,7 @@ export {
   type SeedEntryDraft,
 } from "./normalize.ts";
 export {
+  buildCatalogEntry,
   mediaFileNameFor,
   mirrorAll,
   mirrorEntry,

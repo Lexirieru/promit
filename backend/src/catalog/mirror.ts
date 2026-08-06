@@ -26,6 +26,12 @@ export interface MirrorOptions {
   fetchImpl?: typeof fetch;
   /** Reuse an existing non-empty file instead of downloading again. */
   skipExisting?: boolean;
+  /**
+   * Extra directories where an existing non-empty `<id>.<ext>` also counts
+   * as already mirrored. Lets a fresh clone with committed, optimized media
+   * skip the raw download entirely.
+   */
+  alsoConsiderExisting?: string[];
   timeoutMs?: number;
 }
 
@@ -47,14 +53,22 @@ export async function mirrorEntry(
   destDir: string,
   options: MirrorOptions = {},
 ): Promise<MirrorOutcome> {
-  const { fetchImpl = fetch, skipExisting = true, timeoutMs = 60_000 } = options;
+  const {
+    fetchImpl = fetch,
+    skipExisting = true,
+    alsoConsiderExisting = [],
+    timeoutMs = 60_000,
+  } = options;
   const fileName = mediaFileNameFor(draft);
   const destPath = join(destDir, fileName);
+  const existsNonEmpty = (path: string) =>
+    existsSync(path) && statSync(path).size > 0;
 
   let error: string | null = null;
   let mirrored = false;
 
-  if (skipExisting && existsSync(destPath) && statSync(destPath).size > 0) {
+  const alreadyHave = [destPath, ...alsoConsiderExisting.map((dir) => join(dir, fileName))];
+  if (skipExisting && alreadyHave.some(existsNonEmpty)) {
     mirrored = true;
   } else {
     try {
@@ -78,15 +92,34 @@ export async function mirrorEntry(
     }
   }
 
+  return {
+    entry: buildCatalogEntry(draft, mirrored ? fileName : null),
+    file: mirrored ? fileName : null,
+    error,
+  };
+}
+
+/**
+ * Build the catalog row for a draft whose media either landed in
+ * Promit-owned storage under `fileName` (possibly with a different
+ * extension than the source, e.g. after a gif→mp4 transcode) or failed to
+ * mirror (`fileName: null` → flagged `unavailable`).
+ */
+export function buildCatalogEntry(
+  draft: SeedEntryDraft,
+  fileName: string | null,
+  mediaType: CatalogFileEntry["mediaType"] = draft.mediaType,
+  posterFileName: string | null = null,
+): CatalogFileEntry {
   const { sourceMediaUrl: _dropped, body, ...publicFields } = draft;
-  const entry = CatalogFileEntrySchema.parse({
+  return CatalogFileEntrySchema.parse({
     ...publicFields,
-    media: mirrored ? `/media/${fileName}` : null,
-    mediaStatus: mirrored ? "mirrored" : "unavailable",
+    mediaType,
+    media: fileName === null ? null : `/media/${fileName}`,
+    mediaStatus: fileName === null ? "unavailable" : "mirrored",
+    poster: posterFileName === null ? null : `/media/${posterFileName}`,
     body,
   });
-
-  return { entry, file: mirrored ? fileName : null, error };
 }
 
 export async function mirrorAll(

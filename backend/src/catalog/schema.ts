@@ -66,6 +66,12 @@ export const PublicCatalogEntrySchema = z.object({
   media: z.string().startsWith("/media/").nullable(),
   mediaType: MediaTypeSchema,
   mediaStatus: MediaStatusSchema,
+  /**
+   * Poster frame for video entries (`/media/<id>.poster.jpg`), null for
+   * images. The gallery renders it while the clip loads so the grid never
+   * shows an empty box (U5).
+   */
+  poster: z.string().startsWith("/media/").nullable(),
   /** Price in atomic USDC units (6 decimals), as a string. "0" = free. */
   priceAtomic: z.string().regex(/^\d+$/),
   tier: TierSchema,

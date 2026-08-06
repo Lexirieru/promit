@@ -18,6 +18,7 @@ const fixtureCatalog: CatalogFile = {
       media: "/media/fixture-hero.webp",
       mediaType: "image",
       mediaStatus: "mirrored",
+      poster: null,
       priceAtomic: "0",
       tier: "free",
       contentHash: `sha256:${"a".repeat(64)}`,
