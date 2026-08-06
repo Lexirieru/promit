@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Zap } from "lucide-react";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -76,13 +77,13 @@ export default function Home() {
           and Claude Code.
         </p>
 
-        <button
-          type="button"
-          className="animate-fade-in-up rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 sm:px-8 sm:text-base"
+        <Link
+          href="/prompts"
+          className="animate-fade-in-up inline-block rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 sm:px-8 sm:text-base"
           style={{ animationDelay: "0.5s", opacity: 0 }}
         >
           Explore the gallery
-        </button>
+        </Link>
       </main>
 
       <Footer />
