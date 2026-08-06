@@ -58,14 +58,17 @@ docs/                  Architecture, content-hash rule, implementation plan
 
 | Area | State |
 |---|---|
-| Live x402 settlement | proven (receipt above) |
-| PromitRegistry (UUPS) | built, 22 tests, deploy scripts in progress |
+| Live x402 settlement | **proven** — receipt above |
+| PromitRegistry (UUPS) | **deployed and verified** on Base Sepolia |
+| Payment path (402 → settle → deliver) | done |
 | Catalog + media pipeline | 23 entries, media self-hosted |
-| Shared payment client | built, caps enforced |
-| Frontend | landing done; gallery in progress |
-| CLI / MCP server / Claude Code plugin | planned |
+| Shared payment client | done — caps pin denomination before amount |
+| Frontend | landing + gallery done; browser unlock in progress |
+| Creator listing | in progress |
+| CLI / MCP server / Claude Code plugin | in progress |
+| On-chain settler, end-to-end verification | not started |
 
-**119 tests pass** — 22 contract, 45 backend, 43 payment client, 9 frontend.
+**171 tests pass** — 22 contract, 76 backend, 43 payment client, 30 frontend.
 
 ## Design decisions worth knowing
 
@@ -86,7 +89,7 @@ bun install
 cp .env.example .env          # fill in keys; PAY_TO_ADDRESS must be an EOA
 
 cd smartcontract && forge clean && forge test    # 22 tests
-cd ../backend    && bun test                     # 45 tests
+cd ../backend    && bun test                     # 76 tests
 cd ../frontend   && bun run dev
 ```
 
