@@ -519,3 +519,31 @@ Implikasi untuk U4:
 5. Latensi teramati: `/verify` ±300–700 ms, `/supported` ±200 ms (dari CGK;
    region Vercel `iad1`). Sediakan timeout ≥10 s untuk `/settle` karena ia
    menunggu inklusi tx.
+
+---
+
+## 13. Settlement live TERBUKTI (7 Agustus 2026)
+
+Klaim inti proyek ini tidak lagi bersandar pada dokumentasi. Dibuktikan on-chain:
+
+| Item | Nilai |
+|---|---|
+| Tx hash | `0x7b62a3ae1bd835907f3f4b9541cf9b4b082c687c5267795178ad2e2c5aad6a85` |
+| Block | 45141360, `status=1 (success)` |
+| `to` | USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+| Penandatangan (payer) | `0xadE939F26516c657fc01f2eD1B069562b672644c` |
+| Saldo ETH penandatangan | **0 wei** |
+| `tx.from` (pembayar gas) | `0xd407e409E34E0b9afb99EcCeb609bDbcD5e7f1bf` |
+| Durasi `/settle` | 533 ms |
+
+Baris paling penting adalah dua terakhir. `tx.from` persis alamat signer yang
+diiklankan facilitator di `GET /supported`, dan penandatangan punya nol ETH.
+Jadi "pembeli hanya menandatangani pesan dan tidak perlu ETH" bukan klaim
+dokumentasi — itu terbaca dari receipt.
+
+Urutan yang diamati: `/verify` menolak otorisasi kedaluwarsa dengan
+`invalid_exact_evm_payload_authorization_valid_before`, lalu menerima yang valid
+(`isValid=true`), lalu `/settle` mengembalikan `success=true` dengan tx hash.
+
+Reproduksi: isi USDC di alamat penandatangan lewat https://faucet.circle.com
+(Base Sepolia), lalu `bun run scripts/spike-facilitator.ts` dari root.
