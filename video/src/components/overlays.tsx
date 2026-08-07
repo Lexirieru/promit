@@ -53,6 +53,8 @@ export const TitleBeat: React.FC<{
           textAlign: 'center',
           lineHeight: 1.08,
           maxWidth: 1500,
+          textShadow:
+            '0 2px 30px rgba(255,255,255,0.85), 0 1px 8px rgba(255,255,255,0.6)',
         }}
       >
         {children}
@@ -65,6 +67,8 @@ export const TitleBeat: React.FC<{
             fontSize: 40,
             color: subColor ?? theme.muted,
             textAlign: 'center',
+            textShadow:
+              '0 2px 30px rgba(255,255,255,0.9), 0 1px 8px rgba(255,255,255,0.7)',
           }}
         >
           {sub}

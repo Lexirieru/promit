@@ -1,0 +1,2 @@
+# The ANSI recording is byte-exact terminal output; never normalize it.
+public/captures/*.ansi.txt -text

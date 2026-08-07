@@ -7,9 +7,8 @@ import {
   useVideoConfig,
 } from 'remotion';
 import {TerminalFrame, parseAnsi} from '../components/Terminal';
-import {Caption, Chip, TitleBeat} from '../components/overlays';
+import {Caption, TitleBeat} from '../components/overlays';
 import {CLI_ANSI} from '../generated/cliOutput';
-import {theme} from '../theme';
 
 export const AGENT_LEN = 480;
 
@@ -55,10 +54,10 @@ export const Agent: React.FC = () => {
           />
         </AbsoluteFill>
       ) : null}
-      <Chip at={190} x={118} y={952} dot={theme.green}>
-        Real output — recorded against the live API
-      </Chip>
-      <Caption at={260} until={AGENT_LEN - 12} bottom={40}>
+      <Caption at={200} until={330} bottom={40}>
+        Real output — recorded against the live API.
+      </Caption>
+      <Caption at={345} until={AGENT_LEN - 12} bottom={40}>
         Same catalog on the CLI, MCP server, and Claude Code plugin.
       </Caption>
     </AbsoluteFill>

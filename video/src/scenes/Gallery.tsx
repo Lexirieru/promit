@@ -9,8 +9,7 @@ import {
 } from 'remotion';
 import {BrowserFrame, browserContentSize} from '../components/BrowserFrame';
 import {getCamera} from '../components/camera';
-import {Caption, Chip} from '../components/overlays';
-import {theme} from '../theme';
+import {Caption} from '../components/overlays';
 
 export const GALLERY_LEN = 360;
 
@@ -62,11 +61,8 @@ export const Gallery: React.FC = () => {
           />
         </BrowserFrame>
       </AbsoluteFill>
-      <Chip at={40} x={118} y={952} dot={theme.green}>
-        GET /v1/catalog — 23 entries
-      </Chip>
       <Caption at={55} until={200}>
-        23 prompts live. Every preview is real output.
+        23 prompts live — served by <b>GET /v1/catalog</b>.
       </Caption>
       <Caption at={220} until={GALLERY_LEN - 12}>
         Free prompts copy instantly — paid ones unlock for cents of USDC.
