@@ -67,11 +67,33 @@ manager.
 
 ## Wallet + x402 unlock (U6)
 
-- Stack: wagmi 3 + viem + TanStack Query. `src/lib/wagmi.ts` holds the
-  config (Base Sepolia ONLY — the shared client's policy filter refuses
-  every other network, so more chains would only manufacture wrong-chain
-  states); `src/app/providers.tsx` mounts WagmiProvider + QueryClient in
-  the root layout.
+- Stack: Reown AppKit ON TOP OF wagmi 3 + viem + TanStack Query — AppKit
+  wraps wagmi, it does not replace it. `src/lib/wagmi.ts` holds the
+  `WagmiAdapter` (Base Sepolia ONLY — the shared client's policy filter
+  refuses every other network, so more chains would only manufacture
+  wrong-chain states; networks imported from `@reown/appkit/networks`, an
+  explicit `http()` transport keeps the chain's default public RPC instead
+  of Reown's proxy) and exports its `wagmiConfig`; `src/app/providers.tsx`
+  mounts WagmiProvider + QueryClient in the root layout. Keep every
+  `@reown/appkit*` package on the SAME version — mixed versions fail at
+  runtime, not install time.
+- `src/lib/appkit.ts` calls `createAppKit` ONCE at module scope (inside a
+  component it would re-run per render and corrupt modal state) and is
+  imported for its side effect by `providers.tsx` — module evaluation
+  order is the init-before-render guarantee. It is a deliberate test seam:
+  suites that mount the real `Providers` mock this module away. Email and
+  social login are OFF (`features`): embedded wallets hold no Base Sepolia
+  USDC, so those options are dead ends dressed up as choices.
+  `NEXT_PUBLIC_REOWN_PROJECT_ID` (documented in the root `.env.example`)
+  falls back to Reown's published localhost-only id so fresh checkouts
+  build; deployments must set the real id.
+- `WalletButton` opens the AppKit modal (`useAppKit().open()`) — wallet
+  choice (MetaMask, Coinbase, WalletConnect QR), connection progress, and
+  connection errors are the MODAL's states now, not the button's. The
+  button keeps only disconnected (open modal) and connected (truncated
+  address + disconnect). No cookie hydration: `ssr: true` without
+  `cookieToInitialState` is intentional — server and first client render
+  both say "disconnected", same as U6 shipped.
 - `src/lib/unlock.ts` is the ONLY bridge to `@promit/x402-client` (KTD19).
   It supplies exactly what the package can't give a browser: a
   sessionStorage spend ledger (injected via `createPromitFetch`'s `ledger`
@@ -106,6 +128,12 @@ manager.
   The package's BigInt literals also force `tsconfig target >= ES2020`.
   A stale `.next` cache can replay old typecheck diagnostics after a
   tsconfig change — `rm -rf .next` before concluding the fix didn't work.
+  AppKit's wagmi adapter drags in `@coinbase/cdp-sdk` (via the Base
+  account connector's Node entry), whose SVM path lazily imports the
+  uninstalled optional `@x402/svm`; Turbopack resolves dynamic imports
+  statically during SSR bundling and fails the build, so next.config.ts
+  lists the sdk in `serverExternalPackages` — Node would only resolve that
+  import if an SVM payment were ever signed, which never happens here.
 - Test seams mirror the layering: `unlock-flow.test.ts` runs the REAL
   shared-client machinery (mock signer + fetch stub speaking v2
   `PAYMENT-REQUIRED` headers via `@x402/core/http`, a devDependency pinned
@@ -113,7 +141,12 @@ manager.
   the hook boundary and `@/lib/unlock` via partial `vi.mock` so the real
   error classes keep working with `instanceof`. `prompt-detail.test.tsx`
   renders under the real `Providers` — jsdom has no injected wallet,
-  which is precisely the disconnected state it asserts.
+  which is precisely the disconnected state it asserts. jsdom cannot
+  drive the real AppKit modal (and its init fetches remote config the
+  fetch stubs would garble), so every suite that reaches `WalletButton`
+  stubs `@reown/appkit/react`'s `useAppKit`, and `prompt-detail.test.tsx`
+  additionally mocks `@/lib/appkit` to keep `createAppKit` out of jsdom
+  while the real wagmi provider machinery stays live.
 
 ## Creator listing (/list, U7)
 
