@@ -79,3 +79,54 @@ The facilitator is a third party on the critical path of every purchase, is unve
 ## Attribution
 
 Seed catalog entries are free tier prompts from motionsites.ai, labelled free with per entry attribution. MotionSites co hosts ChainHack 2026, and the main track asks how builders can resell prompts using x402. Prom It answers that as the resale layer rather than a competing storefront. Paid listings are original work.
+---
+
+# Progress During Hackathon
+
+Everything in this repository was built during the hackathon. The initial commit and all 130 commits after it carry the same date, and the git history is public if you want to check.
+
+## What was built
+
+**Smart contract.** PromitRegistry, a UUPS upgradeable registry that records listings and unlock receipts, with the settler role separated from the upgrade authority. Deployed to Base Sepolia and source verified, along with its proxy. 22 tests, including one that deliberately reorders storage and asserts the OpenZeppelin upgrade validator rejects it.
+
+**Payment path.** A Hono API on bun that answers 402 with x402 v2 payment requirements, verifies, settles, and returns the prompt with both a transaction hash and a content hash. The body is resolved and the unlock row written before settlement is invoked, so a buyer cannot be charged with no record. 126 tests.
+
+**Shared payment client.** One package that every buying surface imports, so the spend caps cannot drift apart between them. 43 tests.
+
+**Frontend.** A Next 16 app with the landing page, the gallery, prompt detail, wallet connection through Reown AppKit, the unlock flow, and a creator listing form that authenticates by wallet signature. 64 tests.
+
+**Agent surfaces.** A CLI that bundles to zero runtime dependencies, an MCP server, and a Claude Code plugin that installs the skill and the server together. 84 tests across the three.
+
+339 tests in total across seven packages.
+
+## Things we got wrong first and had to fix
+
+We record these because they shaped the result more than the features did.
+
+**Two units built incompatible content hashes.** The catalog minted SHA-256 while the client and the contract used keccak256. Every package passed its own tests because each was internally consistent. The break only existed at the seam, which no unit owned. It surfaced when the branches were merged and the suites were re-run together. The fix was to standardise on keccak256 and add a cross package test that pins both implementations to the same digest.
+
+**A returning buyer would have been charged twice.** The unlock table always knew who had bought what, but nothing exposed it. Closing that gap needed care: an address in a query string can be typed by anyone, so ownership had to be proved by signature rather than claimed. A malformed or expired proof now returns 401 instead of quietly falling through to charging.
+
+**A spend cap that only checked the amount was not a cap.** It could be defeated by an 18 decimal token whose amount looked small against a 6 decimal USDC threshold, and separately by repetition, since two hundred purchases just under the limit drain a wallet while every one passes. The filter now pins scheme, network, and asset before comparing the number, and a cumulative session cap persists to disk.
+
+**Purchased text was being treated as a payload to deliver.** Anyone can list a prompt, an agent buys it unattended, and the text lands in a session holding a private key. It is now returned inside a nonce delimited block, with the nonce generated after the seller's text exists so a seller cannot close the block from inside.
+
+## Things the ecosystem got wrong that cost us time
+
+**The facilitator URL printed in the official x402 v2 READMEs does not resolve.** It is NXDOMAIN. The working host is https://x402.org/facilitator.
+
+**The MCP TypeScript SDK was replaced on 27 July 2026** by a nine package split at v2. Every MCP tutorial written before August 2026 targets an API that no longer exists.
+
+**The facilitator mislabels a corrupted signature** as an insufficient balance error, returns HTTP 500 for an unknown scheme rather than a 4xx, and echoes an unverified payer address on failure responses. We found all three by running a spike against it before writing the payment route, which is the only reason the route was written against observed behaviour instead of documentation.
+
+---
+
+# Fundraising Status
+
+Not raising. Prom It is self funded and has taken no external capital.
+
+The build runs on free tiers and testnet: Base Sepolia with faucet USDC, the public x402 facilitator, Railway and Vercel. Total spend to date is the gas for one contract deployment, roughly 0.000024 ETH on a testnet.
+
+If the project continues past the hackathon, the first costs would be a mainnet deployment, a CDP facilitator account for mainnet settlement, and media hosting as the catalog grows. None of those require outside funding at current scale.
+
+The revenue mechanism is already built rather than planned: creators set a price per prompt, and the protocol takes a fee on unlock. What it has not done is prove demand. That is the honest gap, and no amount of funding would close it faster than putting the paid catalog in front of real buyers.
