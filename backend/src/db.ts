@@ -295,6 +295,25 @@ export function insertListing(db: Database, listing: NewListing): void {
   });
 }
 
+/**
+ * Deteksi duplikat U7: badan yang identik menurut aturan hash terpublikasi
+ * berarti listing yang sama. Constraint UNIQUE pada content_hash tetap
+ * penjaga terakhirnya; helper ini ada supaya route bisa menjawab 409 yang
+ * menyebut listing yang sudah ada, bukan error constraint mentah.
+ */
+export function findListingByContentHash(
+  db: Database,
+  contentHash: string,
+): ListingRow | null {
+  return (
+    db
+      .query<ListingRow, { contentHash: string }>(
+        `SELECT * FROM listings WHERE content_hash = $contentHash`,
+      )
+      .get({ contentHash }) ?? null
+  );
+}
+
 export function getListing(db: Database, id: string): ListingRow | null {
   return (
     db

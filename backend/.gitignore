@@ -6,3 +6,5 @@ data/*.sqlite-wal
 data/*.sqlite-shm
 # U16's workspace root owns dependency locking; a nested lock would go stale
 bun.lock
+# U7: upload media kreator (runtime) — hanya output mirror seed yang di-commit
+media/uploads/
