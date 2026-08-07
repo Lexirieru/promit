@@ -1,0 +1,8 @@
+{
+  "name": "promit",
+  "version": "0.1.0",
+  "description": "Pay-per-prompt marketplace for agents: search, preview, and buy proven prompts with USDC on Base Sepolia over x402. Bundles the Promit MCP server with the skill that knows when buying beats improvising.",
+  "author": {
+    "name": "Promit"
+  }
+}

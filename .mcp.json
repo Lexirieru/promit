@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "promit": {
+      "command": "bun",
+      "args": ["mcp/src/server.ts"],
+      "env": {
+        "PROMIT_PRIVATE_KEY": "${PROMIT_PRIVATE_KEY}"
+      }
+    }
+  }
+}
