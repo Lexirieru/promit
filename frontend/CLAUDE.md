@@ -65,6 +65,28 @@ manager.
   matchMedia, id-keyed state that derives back to pending on param change
   (detail page), attempt counters bumped in event handlers (retry).
 
+## Creator listing (/list, U7)
+
+- `src/app/list/page.tsx` + `src/lib/listing.ts`. Path `/v1/listings*`
+  hidup di `lib/listing.ts` (file terpisah dari `api.ts` agar tidak
+  konflik dengan U6); `canonicalListingMessage()` di sana MENCERMINKAN
+  `backend/src/catalog/listing.ts` — server membangun ulang pesan dari
+  field yang diterima dan menolak bila alamat yang pulih bukan kreator
+  yang diklaim, jadi ubah format dua-duanya atau jangan sama sekali.
+- Alur submit bernama (R27): idle → preparing (hash dihitung server via
+  `POST /prepare`, sekaligus deteksi duplikat sebelum tanda tangan) →
+  signing (`personal_sign` via `window.ethereum` polos, tanpa dependensi
+  wallet) → uploading (XMLHttpRequest, karena fetch tidak punya progress
+  upload; progressbar ber-`aria-valuenow`) → success | error.
+- **State error hanya mengganti fase, tidak pernah menyentuh nilai
+  field** — retry melanjutkan dari isian yang sama; reset hanya lewat
+  "List another prompt" setelah sukses. `page.test.tsx` mengunci ini.
+- Preview hanya bisa berupa FILE upload (tidak ada field URL, R5) dengan
+  checkbox atestasi R24; batas harga terpublikasi di-fetch dari
+  `GET /v1/listings/bounds` dan ditegakkan dua sisi.
+- Tes menstub `XMLHttpRequest` (progress/onerror adalah seam yang
+  diuji), `window.ethereum`, dan fetch untuk bounds+prepare.
+
 ## Tests
 
 - `bun run test` → `vitest run`, config in `vitest.config.mts` (jsdom,

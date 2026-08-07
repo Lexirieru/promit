@@ -4,7 +4,8 @@ Bun package. `bun test` / `bun run typecheck` / `bun run dev` (server,
 port 3001) / `bun run mirror` from this directory. U2 owns everything under
 `src/catalog/`, `scripts/mirror-media.ts`, and `data/catalog.json`; U3 owns
 `src/index.ts`, `src/routes/catalog.ts`, `src/middleware/cors.ts`,
-`src/db.ts`; U4 owns `src/x402/` and `src/routes/unlock.ts`.
+`src/db.ts`; U4 owns `src/x402/` and `src/routes/unlock.ts`; U7 owns
+`src/catalog/listing.ts` and `src/routes/listings.ts`.
 
 ## API contract (U3<->U5, locked by the coordinator 2026-08-07)
 
@@ -22,7 +23,11 @@ change a path or shape without a decision_gate.
   `network`, `payer` — text, tx hash, AND content hash in the body is the
   locked contract.
 - `GET /health` → `{ ok: true }`.
-- `GET /media/*` → committed mirror output, traversal-guarded.
+- `GET /media/*` → committed mirror output PLUS `media/uploads/` runtime
+  kreator (U7), traversal-guarded, `X-Content-Type-Options: nosniff`
+  (ada byte kiriman pengguna di bawah path ini — jangan hapus header itu).
+- `GET /v1/listings/bounds`, `POST /v1/listings/prepare`,
+  `POST /v1/listings` → U7, lihat bagian Creator listing di bawah.
 - Errors are `{ error: "<snake_case_code>", message: "<sentence>" }`.
 - **No `body` field in any catalog response, free tier included** — free
   text is delivered by `/v1/prompts/:id` only, so prompt text has exactly
@@ -97,6 +102,48 @@ baru ketahuan setelah pembeli terpotong.
   strict-deep-equal terhadap requirements) adalah kode library asli.
   Klien tes harus meng-echo `accepts[0]` hasil decode PAYMENT-REQUIRED
   apa adanya — ubah satu field saja dan matching gagal.
+
+## Creator listing (U7)
+
+`src/catalog/listing.ts` (domain: pesan kanonik, batas harga, klasifikasi
+media, mirror upload) + `src/routes/listings.ts` (route), mounted
+`/v1/listings` di `index.ts`.
+
+- **Autentikasi = tanda tangan wallet, titik (R26/AE10).** Kreator
+  personal_sign (EIP-191) atas `canonicalListingMessage()`:
+  `promit.listing.v1\ntitle: …\ncategory: …\ncontentHash: …\n
+  priceAtomic: …\nnonce: …`. Server menghitung ulang hash dari body yang
+  DITERIMA, membangun ulang pesan, `recoverMessageAddress`, dan menolak
+  401 `signature_mismatch` bila tidak sama dengan `creatorAddress`.
+  Format pesan DICERMINKAN di `frontend/src/lib/listing.ts` — ubah dua-
+  duanya atau jangan sama sekali. Field diverifikasi verbatim: trim atau
+  normalisasi server-side akan mematahkan tanda tangan yang sah.
+- **Urutan penolakan:** validasi field (400 `validation_failed` +
+  `fields` per-field) → batas harga (400 `price_out_of_bounds`, jawaban
+  memuat batas) → duplikat (409 `duplicate_content` + `existingId`, cek
+  union seed+listing lewat content hash; UNIQUE constraint tetap penjaga
+  balapan) → tanda tangan (401) → mirror media (502
+  `media_mirror_failed`, bisa diulang) → transaksi SQLite
+  (`insertListing` + `setPaidBody` atomik). Tidak ada byte yang mendarat
+  di storage sebelum tanda tangan terbukti.
+- **`POST /prepare`** (`{ body }` → `{ contentHash, teaser }`, 409 bila
+  duplikat) ada supaya penolakan termurah datang SEBELUM kreator
+  menandatangani dan meng-upload; klien tidak butuh implementasi keccak
+  kedua yang bisa drift.
+- **Media wajib upload (R5):** string URL di field media = 400
+  `media_must_be_upload` dengan namanya sendiri. MIME yang diterima
+  (webp/png/jpg/mp4/webm, ≤10 MB) wajib cocok magic bytes — byte HTML
+  berlabel image/* yang tersaji dari origin API adalah vektor XSS. Upload
+  mendarat di `media/uploads/<id>.<ext>` (gitignored); video upload
+  `poster: null` (tidak ada ffmpeg runtime), galeri menanganinya.
+- **Batas harga terpublikasi:** `MIN_PRICE_ATOMIC`/`MAX_PRICE_ATOMIC`
+  ($0.01–$10.00) di `listing.ts`, disajikan `GET /bounds` — frontend
+  menampilkannya, server menegakkannya.
+- Id = slug judul, disufiks `-2`, `-3`, … terhadap union seed+listing:
+  seed menang saat tabrakan di route katalog, jadi id milik seed tidak
+  pernah diterbitkan untuk listing (akan terbayangi selamanya).
+- Tes menandatangani dengan kunci viem sungguhan dan menempuh tarian 402
+  U4 di seam `FacilitatorClient` yang sama dengan `unlock.test.ts`.
 
 ## The one rule that matters
 
