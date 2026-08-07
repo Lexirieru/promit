@@ -24,6 +24,10 @@ import { paidEntry } from "./helpers";
  * seluruh file ini.
  */
 
+vi.mock("@/lib/appkit", () => ({}));
+vi.mock("@reown/appkit/react", () => ({
+  useAppKit: () => ({ open: vi.fn() }),
+}));
 vi.mock("wagmi", () => ({
   useAccount: vi.fn(),
   useConnect: vi.fn(),
