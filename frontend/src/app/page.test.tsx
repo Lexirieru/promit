@@ -5,11 +5,11 @@ import Home from "./page";
 afterEach(cleanup);
 
 describe("landing page branding", () => {
-  it("renders the Promit logo with a meaningful alt, linked home, and no occurrence of Stellar.ai", () => {
+  it("renders the Prom It logo with a meaningful alt, linked home, and no occurrence of Stellar.ai", () => {
     const { container } = render(<Home />);
     // Logo adalah tautan ke beranda, jadi alt-nya wajib bermakna — alt
     // kosong membuat link tanpa nama bagi screen reader.
-    const logo = screen.getByRole("img", { name: "Promit" });
+    const logo = screen.getByRole("img", { name: "Prom It" });
     expect(logo.getAttribute("src")).toContain("promit-logo");
     expect(logo.closest("a")?.getAttribute("href")).toBe("/");
     expect(container.textContent).not.toContain("Stellar.ai");

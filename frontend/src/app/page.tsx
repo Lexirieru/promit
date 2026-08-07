@@ -76,7 +76,7 @@ export default function Home() {
             className="animate-fade-in-up mx-auto mb-6 max-w-2xl px-2 text-base text-gray-600 sm:mb-8 sm:text-lg md:text-xl"
             style={{ animationDelay: "0.4s", opacity: 0 }}
           >
-            Promit is a prompt marketplace where one x402 request buys one
+            Prom It is a prompt marketplace where one x402 request buys one
             prompt — for humans in the browser and autonomous agents on the
             CLI, MCP, and Claude Code.
           </p>

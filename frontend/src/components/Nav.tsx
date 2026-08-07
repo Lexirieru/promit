@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 
 /**
  * Setiap item nav MENUNJUK ke permukaan yang benar-benar ada. Versi lama
- * membawa sisa template SaaS — "Log in" (Promit tidak punya login;
+ * membawa sisa template SaaS — "Log in" (Prom It tidak punya login;
  * identitas adalah wallet), "For Agents"/"Docs" sebagai tombol mati dengan
  * dropdown palsu, dan "Start selling" yang tidak menunjuk ke mana-mana.
  * Tombol yang tidak melakukan apa-apa adalah janji kosong; jangan
@@ -33,7 +33,7 @@ export default function Nav() {
         <Link href="/" className="flex items-center">
           <Image
             src="/promit-logo.png"
-            alt="Promit"
+            alt="Prom It"
             width={64}
             height={64}
             className="h-12 w-12 sm:h-14 sm:w-14"

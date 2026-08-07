@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Promit — Pay per prompt. Not per month.",
+  title: "Prom It — Pay per prompt. Not per month.",
   description:
     "A prompt marketplace where one x402 request unlocks one prompt for cents of USDC — for humans in the browser and autonomous agents on the CLI, MCP, and Claude Code.",
 };

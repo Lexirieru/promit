@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="frontend/public/promit-logo.png" alt="Promit" width="96" height="96" />
+<img src="frontend/public/promit-logo.png" alt="Prom It" width="96" height="96" />
 
-# Promit
+# Prom It
 
 ### Buy one prompt for cents. Not a $300 lifetime bundle you'll use once.
 
@@ -112,7 +112,7 @@ sequenceDiagram
     autonumber
     participant C as Buyer / Agent
     participant X as x402-client
-    participant A as Promit API
+    participant A as Prom It API
     participant F as Facilitator
     participant U as USDC · Base Sepolia
 
@@ -185,7 +185,7 @@ close the block from inside.
 MotionSites ships its **entire prompt library inside the client bundle** and enforces the paywall in
 the UI. Clicking "copy prompt" fires no network request at all — the text was already on your machine.
 
-Promit's catalog splits a public face from a private body as **separate types**, and a paid body in
+Prom It's catalog splits a public face from a private body as **separate types**, and a paid body in
 the git-tracked catalog is a **schema load error**, not a leak waiting to be found:
 
 ```ts
@@ -309,7 +309,7 @@ We would rather you read this than discover it.
 - **`PAY_TO_ADDRESS` must be an EOA.** The registry has no withdrawal path by design — USDC sent
   there is unrecoverable without an upgrade.
 - **The upgrade authority is the residual trust root.** Whoever holds it can rewrite stored content
-  hashes, so "verify without trusting Promit" reduces to trusting that one key. It is held outside the
+  hashes, so "verify without trusting Prom It" reduces to trusting that one key. It is held outside the
   backend and deploy environments; a multisig is the stronger posture.
 - **The facilitator is a third-party dependency** on the critical path of every purchase. It is
   unversioned and publishes no uptime guarantee. `FACILITATOR_URL` makes it swappable.
@@ -322,7 +322,7 @@ We would rather you read this than discover it.
 
 Seed catalog entries are **free-tier** prompts from [motionsites.ai](https://motionsites.ai), labelled
 free and attributed per entry. MotionSites co-hosts ChainHack 2026, whose main track asks how builders
-can resell prompts using x402 — Promit answers that as the resale layer, not a competing storefront.
+can resell prompts using x402 — Prom It answers that as the resale layer, not a competing storefront.
 Paid listings are original work.
 
 ---

@@ -100,7 +100,7 @@ export default function PromptsPage() {
               The catalog didn&apos;t load
             </p>
             <p className="mb-5 text-sm text-gray-600">
-              The Promit API isn&apos;t reachable right now. Check that the
+              The Prom It API isn&apos;t reachable right now. Check that the
               backend is running, then try again.
             </p>
             <button
