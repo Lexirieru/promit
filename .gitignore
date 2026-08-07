@@ -15,7 +15,6 @@ dist/
 # foundry
 smartcontract/out/
 smartcontract/cache/
-smartcontract/broadcast/
 smartcontract/docs/
 smartcontract/.env
 
