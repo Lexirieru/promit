@@ -23,9 +23,15 @@ import { PublicCatalogEntrySchema } from "./catalog/index.ts";
  * routes, not the schema.
  */
 
-export const DEFAULT_DB_PATH = fileURLToPath(
-  new URL("../data/promit.sqlite", import.meta.url),
-);
+/**
+ * `PROMIT_DB_PATH` overrides the location so a host can point the store at a
+ * mounted volume. Without it, a platform that redeploys from a fresh image
+ * loses every paid body and unlock record on each deploy — the repo-relative
+ * default only survives because a dev box keeps the same working tree.
+ */
+export const DEFAULT_DB_PATH =
+  process.env.PROMIT_DB_PATH ??
+  fileURLToPath(new URL("../data/promit.sqlite", import.meta.url));
 
 const SCHEMA = /* sql */ `
 CREATE TABLE IF NOT EXISTS paid_bodies (
