@@ -1,0 +1,29 @@
+{
+  "name": "@promit/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Promit terminal surface: search, preview, buy, and verify prompts from the marketplace. Bundles to a single node-runnable file with zero runtime dependencies (KTD11).",
+  "bin": {
+    "promit": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "bun build src/cli.ts --outfile dist/cli.js --target node --format esm --minify && chmod +x dist/cli.js",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@promit/x402-client": "workspace:*",
+    "@types/bun": "^1.3.9",
+    "@x402/core": "2.21.0",
+    "citty": "0.2.2",
+    "console-table-printer": "^2.14.6",
+    "ethers": "^6.15.0",
+    "figlet": "1.11.4",
+    "gradient-string": "^3.0.0",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.9.3",
+    "viem": "^2.44.4"
+  }
+}
