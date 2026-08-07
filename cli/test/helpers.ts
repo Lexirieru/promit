@@ -3,12 +3,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
+import { recoverMessageAddress } from "viem";
 
 import {
   BASE_SEPOLIA_NETWORK,
   BASE_SEPOLIA_USDC,
   hashPromptText,
 } from "@promit/x402-client";
+
+import {
+  ENTITLEMENT_PROOF_HEADER,
+  canonicalEntitlementMessage,
+} from "../src/entitlement";
 
 export const CLI_DIR = new URL("..", import.meta.url).pathname;
 
@@ -81,6 +87,7 @@ export const ENTRIES = [
 export interface SeenRequest {
   path: string;
   hasPaymentSignature: boolean;
+  hasEntitlementProof: boolean;
 }
 
 export interface MockApi {
@@ -94,16 +101,41 @@ export interface MockApi {
  * wire exchange: 402 + PAYMENT-REQUIRED header until PAYMENT-SIGNATURE
  * arrives, then 200 with text, contentHash, and txHash in the body — the
  * same shape backend/src/routes/unlock.ts serves.
+ *
+ * `ownedBy` lists wallets that already hold a delivered unlock for every
+ * paid entry. An ENTITLEMENT-PROOF header is verified with a REAL viem
+ * signature recovery over the mirrored canonical message, so these tests
+ * prove the CLI builds a proof the backend's verification rules accept —
+ * not merely that it sets a header.
  */
-export function startMockApi(): MockApi {
+export function startMockApi(options: { ownedBy?: string[] } = {}): MockApi {
+  const ownedBy = (options.ownedBy ?? []).map((address) => address.toLowerCase());
   const requests: SeenRequest[] = [];
+
+  async function entitledOwner(request: Request, promptId: string): Promise<string | null> {
+    const proof = request.headers.get(ENTITLEMENT_PROOF_HEADER);
+    if (proof === null) return null;
+    const [payer = "", nonce = "", issuedAt = "", signature = ""] = proof.split("|");
+    try {
+      const recovered = await recoverMessageAddress({
+        message: canonicalEntitlementMessage({ promptId, nonce, issuedAt }),
+        signature: signature as `0x${string}`,
+      });
+      if (recovered.toLowerCase() !== payer.toLowerCase()) return null;
+    } catch {
+      return null;
+    }
+    return ownedBy.includes(payer.toLowerCase()) ? payer.toLowerCase() : null;
+  }
+
   const server = Bun.serve({
     port: 0,
-    fetch(request) {
+    async fetch(request) {
       const url = new URL(request.url);
       requests.push({
         path: url.pathname,
         hasPaymentSignature: request.headers.has("PAYMENT-SIGNATURE"),
+        hasEntitlementProof: request.headers.has(ENTITLEMENT_PROOF_HEADER),
       });
 
       if (url.pathname === "/v1/catalog") {
@@ -142,6 +174,22 @@ export function startMockApi(): MockApi {
             tier: "free",
             text: FREE_TEXT,
             contentHash: found.contentHash,
+            attribution: ATTRIBUTION,
+          });
+        }
+        // Jalur pembeli-yang-kembali: bukti terverifikasi milik pemilik
+        // menjawab teks TANPA 402 — mirror gate entitlement backend.
+        const owner = await entitledOwner(request, found.id);
+        if (owner !== null) {
+          return Response.json({
+            id: found.id,
+            tier: "paid",
+            text: PAID_TEXT,
+            contentHash: found.contentHash,
+            txHash: PAID_TX_HASH,
+            network: BASE_SEPOLIA_NETWORK,
+            payer: owner,
+            alreadyOwned: true,
             attribution: ATTRIBUTION,
           });
         }

@@ -166,6 +166,42 @@ export function markUnlockDelivered(
   ).run({ payer: payer.toLowerCase(), paymentNonce, txHash });
 }
 
+/**
+ * Baris delivered milik satu payer — punggung endpoint kepemilikan.
+ * Hanya 'delivered' yang dihitung sebagai memiliki: 'pending' belum tentu
+ * dibayar, dan 'settled_but_undelivered' adalah kasus pemulihan manual yang
+ * tidak boleh diselesaikan diam-diam lewat jalur baca ini.
+ */
+export function listDeliveredUnlocks(db: Database, payer: string): UnlockRow[] {
+  return db
+    .query<UnlockRow, { payer: string }>(
+      `SELECT * FROM unlocks WHERE payer = $payer AND status = 'delivered'
+       ORDER BY created_at, prompt_id`,
+    )
+    .all({ payer: payer.toLowerCase() });
+}
+
+/**
+ * Bukti kepemilikan satu prompt: baris delivered pertama untuk
+ * (payer, prompt). Bisa ada lebih dari satu — pembelian ganda adalah
+ * persis cacat yang endpoint kepemilikan tutup — baris TERTUA yang
+ * dikembalikan karena tx hash-nya adalah bukti pembelian orisinal.
+ */
+export function findDeliveredUnlock(
+  db: Database,
+  payer: string,
+  promptId: string,
+): UnlockRow | null {
+  return (
+    db
+      .query<UnlockRow, { payer: string; promptId: string }>(
+        `SELECT * FROM unlocks WHERE payer = $payer AND prompt_id = $promptId
+         AND status = 'delivered' ORDER BY created_at LIMIT 1`,
+      )
+      .get({ payer: payer.toLowerCase(), promptId }) ?? null
+  );
+}
+
 export function markSettledButUndelivered(
   db: Database,
   payer: string,

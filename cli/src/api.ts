@@ -43,6 +43,8 @@ export interface UnlockSuccess {
   txHash?: string;
   network?: string;
   payer?: string;
+  /** True when the text came from a proven prior purchase — no new charge. */
+  alreadyOwned?: boolean;
 }
 
 export const DEFAULT_API_URL = "http://localhost:3001";

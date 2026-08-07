@@ -148,8 +148,9 @@ export class UnlockFailedError extends Error {
   }
 }
 
-/** Walks the cause chain for EIP-1193 code 4001 / viem's rejection error. */
-function isUserRejection(error: unknown): boolean {
+/** Walks the cause chain for EIP-1193 code 4001 / viem's rejection error.
+ * Exported for lib/entitlement.ts, which signs through the same wallets. */
+export function isUserRejection(error: unknown): boolean {
   for (let current = error; current instanceof Error; current = current.cause as Error) {
     const candidate = current as Error & { code?: unknown };
     if (candidate.code === 4001 || candidate.name === "UserRejectedRequestError") {
@@ -187,6 +188,8 @@ export interface UnlockedPrompt {
   hashCheck: ContentHashCheck;
   /** Hash the server reported alongside the text (should match advertised). */
   responseContentHash: string;
+  /** True when the text came from a proven prior purchase — no new charge. */
+  alreadyOwned?: boolean;
 }
 
 interface UnlockResponseBody {

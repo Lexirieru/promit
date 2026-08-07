@@ -13,6 +13,16 @@ manager.
   `src/components/Footer.tsx`. Nav owns the mobile-menu state; its overlay is
   rendered as a sibling of `<nav>` so it positions against the page's
   `relative` root, not the nav bar.
+- Nav pakai logo `public/promit-logo.png` (128×128 transparan, di-resize
+  dari aset 500px milik owner; varian 733 KB berlatar putih sudah dihapus)
+  via next/image dengan width/height eksplisit dan alt "Promit" — logonya
+  adalah LINK ke beranda, jadi alt kosong dilarang (link tanpa nama bagi
+  screen reader). Logo gelap; di permukaan gelap beri varian/`invert`,
+  jangan biarkan hitam di atas hitam. Setiap item nav HARUS menunjuk
+  halaman yang ada — "Log in" (tidak ada login; identitas = wallet) dan
+  tombol mati "For Agents"/"Docs" sudah dibuang, "Start selling" dan
+  "For Creators" menunjuk `/list`; jangan tambah item sebelum halamannya
+  ada. `page.test.tsx` mengunci logo+alt+href dan absennya chrome SaaS.
 - Entrance choreography: staggered elements carry inline `opacity: 0` plus
   `animate-fade-in-up` / `animate-fade-in-overlay` (defined in
   `globals.css`). The `prefers-reduced-motion` guard must SHORTEN the
@@ -99,6 +109,20 @@ manager.
   - Rejection returns to idle with an explanation; settle failure leaves
     the prompt locked; wrong chain offers `switchChain` to Base Sepolia;
     disconnected renders `WalletButton` instead of erroring.
+- **Pembeli yang kembali (entitlement):** saat wallet terhubung,
+  UnlockButton memeriksa `GET /v1/unlocks?payer=` (`fetchOwnedUnlocks` di
+  `api.ts`) dan bila prompt sudah dimiliki MENGGANTI tombol tagih dengan
+  "View your prompt" — membuka teks lewat `lib/entitlement.ts`:
+  personal_sign (wagmi `signMessageAsync`) atas pesan kanonik
+  `promit.entitlement.v1|<promptId>|<nonce>|<issuedAt>` yang MENCERMINKAN
+  `backend/src/entitlement.ts` (dan `cli/src/entitlement.ts`) — ubah
+  ketiganya atau jangan sama sekali. Bukti dibawa header
+  `ENTITLEMENT-PROOF`. Jalur ini chain-agnostic (EIP-191), jadi tanpa gate
+  switchChain. Kegagalan probe kepemilikan jatuh AMAN ke jalur bayar;
+  kegagalan `fetchOwnedPrompt` (401/402) menjadi error yang TERLIHAT dan
+  tidak pernah beralih diam-diam ke pembayaran. Ownership state di-key
+  `(wallet, prompt)` dan diturunkan kembali saat berganti — tanpa setState
+  sinkron di effect.
 - Build traps: the package's file ledger imports `node:fs`/`os`/`path` at
   module top level and Turbopack REFUSES Node builtins in browser chunks,
   so next.config.ts aliases them (browser condition only) to

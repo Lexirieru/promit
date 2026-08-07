@@ -8,9 +8,16 @@ import type {
   HTTPRequestContext,
   HTTPResponseInstructions,
 } from "@x402/core/server";
+import { BASE_SEPOLIA_NETWORK } from "@promit/x402-client";
 import type { CatalogFile } from "../catalog/index.ts";
 import { getFreePromptBody } from "../catalog/index.ts";
-import { getPaidBody, markUnlockDelivered, recordUnlock } from "../db.ts";
+import {
+  findDeliveredUnlock,
+  getPaidBody,
+  markUnlockDelivered,
+  recordUnlock,
+} from "../db.ts";
+import { readEntitlementProof, verifyEntitlementProof } from "../entitlement.ts";
 import {
   authorizationOf,
   createUnlockPaymentServer,
@@ -119,6 +126,46 @@ export function unlockRoutes(deps: UnlockRouteDeps) {
         contentHash: entry.contentHash,
         attribution: entry.attribution,
       });
+    }
+
+    // Kepemilikan SEBELUM 402: pembeli yang kembali membuktikan — bukan
+    // mengklaim — identitasnya dengan tanda tangan atas pesan yang menyebut
+    // prompt INI, dan mendapat teksnya tanpa ditagih lagi. Bukti yang cacat
+    // atau kedaluwarsa DITOLAK 401, tidak pernah diam-diam dijatuhkan ke
+    // jalur tagih: klien yang berniat membuktikan kepemilikan tapi gagal
+    // harus mendengarnya, bukan membayar dua kali. Bukti yang sah milik
+    // wallet TANPA baris delivered jatuh ke 402 normal — wallet lain tetap
+    // ditagih.
+    const proof = readEntitlementProof({
+      header: (name) => c.req.header(name),
+      query: (name) => c.req.query(name),
+    });
+    if (proof) {
+      const verdict = await verifyEntitlementProof(proof, id);
+      if (!verdict.ok) {
+        return c.json({ error: verdict.code, message: verdict.message }, 401);
+      }
+      const owned = findDeliveredUnlock(db, verdict.payer, id);
+      if (owned) {
+        const text = getPaidBody(db, id);
+        if (text === null) {
+          return c.json(
+            { error: "prompt_body_missing", message: `Prompt "${id}" has no stored text.` },
+            500,
+          );
+        }
+        return c.json({
+          id,
+          tier: "paid",
+          text,
+          contentHash: entry.contentHash,
+          txHash: owned.tx_hash,
+          network: BASE_SEPOLIA_NETWORK,
+          payer: verdict.payer,
+          alreadyOwned: true,
+          attribution: entry.attribution,
+        });
+      }
     }
 
     const server = getPaymentServer();

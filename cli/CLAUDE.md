@@ -28,6 +28,19 @@ five subcommands — node, never bun (KTD11).
   nobody can answer would hang an unattended pipeline forever; the guard runs
   right after the catalog fetch so the free tier — which needs no
   confirmation, wallet, or payment — still works unattended.
+- **`buy` memeriksa kepemilikan SEBELUM mesin pembayaran.** Setelah signer
+  resolved, `src/entitlement.ts` menandatangani (EIP-191, lokal, gratis)
+  pesan kanonik `promit.entitlement.v1|<promptId>|<nonce>|<issuedAt>` —
+  MIRROR `backend/src/entitlement.ts`, ubah ketiganya (plus
+  `frontend/src/lib/entitlement.ts`) atau jangan sama sekali — dan mengirim
+  GET dengan header `ENTITLEMENT-PROOF`. 200 `alreadyOwned` ⇒ deliver
+  tanpa membayar ("already owned — no new charge", `--json` membawa
+  `alreadyOwned: true`); 402 ⇒ jalur bayar biasa; 401 ⇒ FAIL, karena bukti
+  kami sendiri ditolak (jam mesin?) dan melanjutkan berarti menagih
+  pemilik dua kali; error jaringan pada probe ⇒ jatuh ke jalur bayar yang
+  penanganan errornya lengkap. Mock API tes memverifikasi bukti dengan
+  pemulihan viem SUNGGUHAN, jadi tes membuktikan CLI membangun bukti yang
+  aturan server terima.
 - **Caps and payment come from `@promit/x402-client` only** (KTD14/KTD19).
   The interactive confirmation lives in `onBeforePaymentCreation` (abort with
   `{ abort: true, reason }`); `--max-price` / `--session-cap` parse through
