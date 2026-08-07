@@ -91,11 +91,17 @@ export interface RegistryChainConfig {
   registryAddress: string;
   settlerPrivateKey: Hex;
   /**
-   * Lower bound for the ListingRegistered log scan. Public RPCs cap
-   * eth_getLogs ranges; pinning this to the deploy block keeps the
-   * crash-recovery read cheap and reliable.
+   * Lower bound for the ListingRegistered log scan. When absent, the deploy
+   * block is discovered once by binary-searching eth_getCode — pass it (env
+   * PROMIT_REGISTRY_DEPLOY_BLOCK) to skip those ~26 discovery reads.
    */
   deployBlock?: bigint;
+  /**
+   * eth_getLogs window size. sepolia.base.org rejects ranges over 2000
+   * blocks ("query exceeds max block range"), so the scan is chunked; raise
+   * this only for an RPC known to allow more.
+   */
+  maxLogRangeBlocks?: bigint;
 }
 
 export function createRegistryChain(config: RegistryChainConfig): RegistryChain {
@@ -107,6 +113,35 @@ export function createRegistryChain(config: RegistryChainConfig): RegistryChain 
     chain: baseSepolia,
     transport: http(config.rpcUrl),
   });
+
+  const maxLogRange = config.maxLogRangeBlocks ?? 2000n;
+  // Log-scan state: where scanning starts (deploy block), how far it has
+  // ingested, and every ListingRegistered seen so far. In-process only — a
+  // restart rescans, which is exactly the crash-recovery read's job.
+  let scanFrom: bigint | null = config.deployBlock ?? null;
+  let scannedTo: bigint | null = null;
+  const knownListings = new Map<Hex, RegisteredListing>();
+
+  /**
+   * First block where the registry has code, by binary search: getLogs from
+   * "earliest" is rejected by public RPCs, and hardcoding a deploy block
+   * would silently truncate the duplicate guard if it were wrong — a false
+   * "not found" here double-registers a listing.
+   */
+  async function firstBlockWithCode(latest: bigint): Promise<bigint> {
+    let low = 0n;
+    let high = latest;
+    while (low < high) {
+      const mid = (low + high) / 2n;
+      const code = await publicClient.getCode({ address: registry, blockNumber: mid });
+      if (code && code !== "0x") {
+        high = mid;
+      } else {
+        low = mid + 1n;
+      }
+    }
+    return low;
+  }
 
   async function write(
     functionName: "registerListing" | "recordUnlock",
@@ -152,19 +187,35 @@ export function createRegistryChain(config: RegistryChainConfig): RegistryChain 
 
     async findListingByContentHash(contentHash) {
       // contentHash is not an indexed event arg, so the node cannot filter
-      // on it — fetch this registry's ListingRegistered logs and match here.
-      const logs = await publicClient.getLogs({
-        address: registry,
-        event: LISTING_REGISTERED_EVENT,
-        fromBlock: config.deployBlock ?? "earliest",
-        toBlock: "latest",
-      });
-      for (const log of logs) {
-        if (log.args.contentHash === contentHash && log.args.listingId !== undefined) {
-          return { listingId: log.args.listingId, txHash: log.transactionHash ?? "" };
+      // on it — this registry's ListingRegistered logs are scanned in
+      // chunks (public RPCs reject wide ranges) and matched here. The scan
+      // is incremental: blocks already ingested into `knownListings` are
+      // never fetched twice in this process.
+      const latest = await publicClient.getBlockNumber();
+      scanFrom ??= await firstBlockWithCode(latest);
+      let from = scannedTo === null ? scanFrom : scannedTo + 1n;
+      while (from <= latest) {
+        const to = from + maxLogRange - 1n < latest ? from + maxLogRange - 1n : latest;
+        const logs = await publicClient.getLogs({
+          address: registry,
+          event: LISTING_REGISTERED_EVENT,
+          fromBlock: from,
+          toBlock: to,
+        });
+        for (const log of logs) {
+          if (log.args.contentHash !== undefined && log.args.listingId !== undefined) {
+            knownListings.set(log.args.contentHash, {
+              listingId: log.args.listingId,
+              txHash: log.transactionHash ?? "",
+            });
+          }
         }
+        // Advance per chunk, not per call: a failure mid-scan resumes where
+        // it stopped instead of repaying the whole range.
+        scannedTo = to;
+        from = to + 1n;
       }
-      return null;
+      return knownListings.get(contentHash) ?? null;
     },
 
     async getTransactionReceipt(txHash) {
