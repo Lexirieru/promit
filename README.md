@@ -16,11 +16,13 @@ So does an autonomous agent, from a CLI, an MCP server, or a Claude Code skill.
 [![Contracts](https://img.shields.io/badge/contracts-source_verified-2ea043?style=for-the-badge)](https://sepolia.basescan.org/address/0x30c92fFadAd24Ca079227A92A33b78683D36Fde6)
 [![Tests](https://img.shields.io/badge/tests-339_passing-2ea043?style=for-the-badge)](#the-gates)
 [![Protocol](https://img.shields.io/badge/x402-v2-8957e5?style=for-the-badge)](https://x402.org)
+[![Live](https://img.shields.io/badge/app-live-2ea043?style=for-the-badge&logo=vercel&logoColor=white)](https://promit-two.vercel.app)
 
+**[Live app](https://promit-two.vercel.app)** ·
+**[API](https://promitbackend-production.up.railway.app/v1/catalog)** ·
 **[Settled transaction](https://sepolia.basescan.org/tx/0x7b62a3ae1bd835907f3f4b9541cf9b4b082c687c5267795178ad2e2c5aad6a85)** ·
 **[PromitRegistry](https://sepolia.basescan.org/address/0x30c92fFadAd24Ca079227A92A33b78683D36Fde6)** ·
-**[Architecture](docs/ARCHITECTURE.md)** ·
-**[Content-hash rule](docs/CONTENT-HASH.md)**
+**[Architecture](docs/ARCHITECTURE.md)**
 
 </div>
 
@@ -226,6 +228,23 @@ loudly instead of faking a pass.
 
 ---
 
+## Deployments
+
+| Surface | Where | Verify |
+|---|---|---|
+| App | [promit-two.vercel.app](https://promit-two.vercel.app) | landing, gallery, creator listing |
+| API | [promitbackend-production.up.railway.app](https://promitbackend-production.up.railway.app/health) | `/health` returns `{"ok":true}` |
+| Catalog | [`/v1/catalog`](https://promitbackend-production.up.railway.app/v1/catalog) | 23 entries, no prompt bodies |
+| Contract | [Basescan](https://sepolia.basescan.org/address/0x30c92fFadAd24Ca079227A92A33b78683D36Fde6) | proxy + implementation verified |
+
+The CLI talks to the deployed API out of the box:
+
+```bash
+bun cli/src/cli.ts search hero
+```
+
+---
+
 ## Repository
 
 ```
@@ -251,7 +270,7 @@ bun install
 cp .env.example .env        # PAY_TO_ADDRESS must be an EOA — see limitations
 
 cd backend  && bun run src/index.ts     # :3001
-cd frontend && bun run dev              # :3000
+cd frontend && bun run dev              # :3000, talks to the deployed API by default
 ```
 
 To reproduce the settlement proof, fund a wallet with Base Sepolia USDC at
