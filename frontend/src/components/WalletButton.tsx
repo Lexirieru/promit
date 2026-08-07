@@ -1,6 +1,7 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
+import { useAccount, useDisconnect } from "wagmi";
 import { Wallet } from "lucide-react";
 
 /** `0x1234…abcd` — enough to recognize, short enough for a button. */
@@ -9,14 +10,16 @@ export function truncateAddress(address: string): string {
 }
 
 /**
- * Browser wallet connection control (U6). Three states, all named in the
- * UI: disconnected (connect via the injected provider), connecting, and
- * connected (address + disconnect). A missing browser wallet surfaces as an
- * inline message when the connect attempt fails — never a thrown error.
+ * Wallet connection control (U6, reworked for Reown AppKit). The button no
+ * longer talks to one injected provider: it opens the AppKit modal, which
+ * owns wallet choice (MetaMask, Coinbase, WalletConnect QR for mobile
+ * wallets), connection progress, and connection errors. Only the two states
+ * the page itself cares about live here: disconnected (open the modal) and
+ * connected (truncated address + disconnect).
  */
 export default function WalletButton() {
+  const { open } = useAppKit();
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending, error } = useConnect();
   const { disconnect } = useDisconnect();
 
   if (isConnected && address) {
@@ -41,22 +44,13 @@ export default function WalletButton() {
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={() => connect({ connector: connectors[0] })}
-        className="inline-flex w-fit items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait disabled:bg-gray-400"
-      >
-        <Wallet aria-hidden className="h-4 w-4" />
-        {isPending ? "Connecting…" : "Connect wallet"}
-      </button>
-      {error && (
-        <p role="alert" className="text-xs text-red-600">
-          Couldn&apos;t connect: {error.message.split("\n")[0]}. Is a browser
-          wallet (e.g. MetaMask) installed?
-        </p>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={() => open()}
+      className="inline-flex w-fit items-center gap-2 rounded-full bg-black px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
+    >
+      <Wallet aria-hidden className="h-4 w-4" />
+      Connect wallet
+    </button>
   );
 }

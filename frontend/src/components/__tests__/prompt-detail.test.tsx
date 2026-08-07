@@ -17,6 +17,16 @@ vi.mock("next/navigation", () => ({
   useParams: () => currentParams,
 }));
 
+// Providers imports @/lib/appkit for its side effect (createAppKit). jsdom
+// is not a browser AppKit can drive, and its init fetches remote config that
+// this suite's fetch stubs would garble — so the init module and the one
+// AppKit hook WalletButton reads are stubbed. The REAL wagmi provider
+// machinery below stays live, which is the point of this suite.
+vi.mock("@/lib/appkit", () => ({}));
+vi.mock("@reown/appkit/react", () => ({
+  useAppKit: () => ({ open: vi.fn() }),
+}));
+
 // U6's unlock control lives on this page and calls wagmi hooks, so the page
 // renders under the real app providers (wagmi + query). jsdom has no injected
 // wallet, which is exactly the disconnected state the paid test asserts.

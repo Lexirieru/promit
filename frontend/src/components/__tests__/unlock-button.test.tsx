@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useAccount, useConnect, useDisconnect, useSignTypedData, useSwitchChain } from "wagmi";
+import { useAccount, useDisconnect, useSignTypedData, useSwitchChain } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 
 import UnlockButton from "@/components/UnlockButton";
@@ -21,10 +21,15 @@ import { paidEntry } from "./helpers";
 
 vi.mock("wagmi", () => ({
   useAccount: vi.fn(),
-  useConnect: vi.fn(),
   useDisconnect: vi.fn(),
   useSignTypedData: vi.fn(),
   useSwitchChain: vi.fn(),
+}));
+
+// WalletButton (rendered in every pre-unlock state) opens the AppKit modal;
+// jsdom drives no modal, so the hook is stubbed at the same boundary as wagmi.
+vi.mock("@reown/appkit/react", () => ({
+  useAppKit: () => ({ open: vi.fn() }),
 }));
 
 vi.mock("@/lib/unlock", async (importOriginal) => ({
@@ -60,7 +65,6 @@ const mismatchResult: UnlockedPrompt = {
 };
 
 const switchChain = vi.fn();
-const connect = vi.fn();
 
 function mockWallet(overrides: { address?: typeof ADDRESS; isConnected?: boolean; chainId?: number } = {}) {
   vi.mocked(useAccount).mockReturnValue({
@@ -103,12 +107,6 @@ beforeEach(() => {
     switchChain,
     isPending: false,
   } as unknown as ReturnType<typeof useSwitchChain>);
-  vi.mocked(useConnect).mockReturnValue({
-    connect,
-    connectors: [{ id: "injected", name: "Injected" }],
-    isPending: false,
-    error: null,
-  } as unknown as ReturnType<typeof useConnect>);
   vi.mocked(useDisconnect).mockReturnValue({
     disconnect: vi.fn(),
   } as unknown as ReturnType<typeof useDisconnect>);
