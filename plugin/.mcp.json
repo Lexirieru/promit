@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "promit": {
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/../mcp/src/server.ts"],
+      "env": {
+        "PROMIT_PRIVATE_KEY": "${PROMIT_PRIVATE_KEY}"
+      }
+    }
+  }
+}
