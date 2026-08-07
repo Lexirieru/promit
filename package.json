@@ -9,5 +9,9 @@
   "scripts": {
     "start": "bun run backend/src/index.ts",
     "settler": "bun run backend/src/settler/index.ts"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.3"
   }
 }
