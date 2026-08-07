@@ -13,6 +13,16 @@ manager.
   `src/components/Footer.tsx`. Nav owns the mobile-menu state; its overlay is
   rendered as a sibling of `<nav>` so it positions against the page's
   `relative` root, not the nav bar.
+- Nav pakai logo `public/promit-logo.png` (128×128 transparan, di-resize
+  dari aset 500px milik owner; varian 733 KB berlatar putih sudah dihapus)
+  via next/image dengan width/height eksplisit dan alt "Promit" — logonya
+  adalah LINK ke beranda, jadi alt kosong dilarang (link tanpa nama bagi
+  screen reader). Logo gelap; di permukaan gelap beri varian/`invert`,
+  jangan biarkan hitam di atas hitam. Setiap item nav HARUS menunjuk
+  halaman yang ada — "Log in" (tidak ada login; identitas = wallet) dan
+  tombol mati "For Agents"/"Docs" sudah dibuang, "Start selling" dan
+  "For Creators" menunjuk `/list`; jangan tambah item sebelum halamannya
+  ada. `page.test.tsx` mengunci logo+alt+href dan absennya chrome SaaS.
 - Entrance choreography: staggered elements carry inline `opacity: 0` plus
   `animate-fade-in-up` / `animate-fade-in-overlay` (defined in
   `globals.css`). The `prefers-reduced-motion` guard must SHORTEN the
