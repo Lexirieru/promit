@@ -28,6 +28,9 @@ change a path or shape without a decision_gate.
   (ada byte kiriman pengguna di bawah path ini — jangan hapus header itu).
 - `GET /v1/listings/bounds`, `POST /v1/listings/prepare`,
   `POST /v1/listings` → U7, lihat bagian Creator listing di bawah.
+- `GET /v1/unlocks?payer=0x…` → `{ payer, unlocks: [{ id, unlockedAt,
+  txHash, contentHash }], total }`, hanya status `delivered`. Lihat bagian
+  Entitlement di bawah.
 - Errors are `{ error: "<snake_case_code>", message: "<sentence>" }`.
 - **No `body` field in any catalog response, free tier included** — free
   text is delivered by `/v1/prompts/:id` only, so prompt text has exactly
@@ -102,6 +105,40 @@ baru ketahuan setelah pembeli terpotong.
   strict-deep-equal terhadap requirements) adalah kode library asli.
   Klien tes harus meng-echo `accepts[0]` hasil decode PAYMENT-REQUIRED
   apa adanya — ubah satu field saja dan matching gagal.
+
+## Entitlement — pembeli yang kembali (celah owner, 2026-08-07)
+
+`src/entitlement.ts` (domain) + `src/routes/unlocks.ts` (daftar) + gate di
+`src/routes/unlock.ts` SEBELUM 402. Tabel `unlocks` selalu tahu siapa
+membeli apa; tanpa jalur baca ini pembeli yang kembali DITAGIH LAGI.
+
+- **Kepemilikan dibuktikan, tidak diklaim.** Alamat di query bisa diketik
+  siapa saja — tanpa tanda tangan, endpoint ini adalah paywall bypass, jauh
+  lebih buruk daripada menagih dua kali. Klien personal_sign (EIP-191,
+  seam yang sama dengan U7) pesan kanonik
+  `promit.entitlement.v1|<promptId>|<nonce>|<issuedAt>` (issuedAt = epoch
+  ms); server memulihkan alamatnya sendiri lewat `recoverMessageAddress`.
+  promptId diambil dari PATH request — tanda tangan prompt A tidak membuka
+  prompt B. Jendela: umur ≤5 menit, skew masa depan ≤1 menit. Pesan
+  DICERMINKAN di `frontend/src/lib/entitlement.ts` dan
+  `cli/src/entitlement.ts` — ubah ketiganya atau jangan sama sekali.
+- Bukti dibawa header `ENTITLEMENT-PROOF: <payer>|<nonce>|<issuedAt>|<sig>`
+  (ada di `PAYMENT_ALLOW_HEADERS` — cabut dan browser diam-diam menanggalkan
+  header-nya, pembeli tertagih lagi) atau query
+  `?payer&nonce&issuedAt&signature` (jalur curl).
+- **Bukti yang dicoba tapi cacat/kedaluwarsa/salah-penanda-tangan = 401**
+  (`entitlement_malformed` / `entitlement_expired` /
+  `entitlement_signature_mismatch`), TIDAK PERNAH dijatuhkan diam-diam ke
+  jalur tagih — klien yang berniat membuktikan kepemilikan tapi gagal harus
+  mendengarnya, bukan membayar dua kali. Bukti sah tanpa baris delivered →
+  402 normal (wallet lain tetap ditagih).
+- Hanya `delivered` yang dihitung memiliki. `settled_but_undelivered`
+  adalah kasus pemulihan manual — jalur baca tidak menyelesaikannya
+  diam-diam. `GET /v1/unlocks` tanpa tanda tangan disengaja: isinya (id,
+  waktu, tx hash, content hash) sudah publik on-chain; TEKS hanya lewat
+  `/v1/prompts/:id` dengan bukti terverifikasi.
+- Respons kepemilikan = bentuk sukses paid ditambah `alreadyOwned: true`,
+  `txHash` dari baris delivered TERTUA (bukti pembelian orisinal).
 
 ## Creator listing (U7)
 

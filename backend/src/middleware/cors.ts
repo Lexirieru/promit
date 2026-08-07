@@ -11,8 +11,17 @@ import { cors } from "hono/cors";
  */
 export const PAYMENT_EXPOSE_HEADERS = ["PAYMENT-REQUIRED", "PAYMENT-RESPONSE"];
 
-/** The client sends its signed payment here; preflight must allow it. */
-export const PAYMENT_ALLOW_HEADERS = ["Content-Type", "PAYMENT-SIGNATURE"];
+/**
+ * The client sends its signed payment here; preflight must allow it.
+ * ENTITLEMENT-PROOF is the returning buyer's signed ownership proof — the
+ * browser drops the header on a cross-origin request unless it is allowed,
+ * and the failure mode is the buyer being charged again.
+ */
+export const PAYMENT_ALLOW_HEADERS = [
+  "Content-Type",
+  "PAYMENT-SIGNATURE",
+  "ENTITLEMENT-PROOF",
+];
 
 /**
  * CORS for every route. Wide-open origin is deliberate: the catalog is a

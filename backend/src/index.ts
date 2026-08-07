@@ -9,6 +9,7 @@ import { paymentCors } from "./middleware/cors.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { listingRoutes } from "./routes/listings.ts";
 import { unlockRoutes } from "./routes/unlock.ts";
+import { unlocksRoutes } from "./routes/unlocks.ts";
 
 /**
  * The Promit API (U3): public catalog + health + mirrored media, with the
@@ -43,6 +44,12 @@ export function createApp(options: AppOptions = {}) {
   // PAY_TO_ADDRESS / FACILITATOR_URL; paymentCors above already exposes the
   // PAYMENT-* headers this route depends on.
   app.route("/v1/prompts", unlockRoutes({ catalog, db }));
+
+  // Kepemilikan: daftar unlock delivered per wallet, supaya pembeli yang
+  // kembali (browser/CLI) tahu apa yang sudah dia miliki sebelum menyentuh
+  // jalur bayar. Teks tidak pernah lewat sini — itu tetap urusan
+  // /v1/prompts/:id dengan bukti entitlement bertanda tangan.
+  app.route("/v1/unlocks", unlocksRoutes({ db }));
 
   // U7: creator listing — bounds terpublikasi, prepare (hash+duplikat), dan
   // submit multipart bertanda tangan EIP-191. Upload media mendarat di
