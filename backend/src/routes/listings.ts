@@ -48,6 +48,13 @@ export interface ListingRouteDeps {
   db: Database;
   /** Injeksi tes: direktori media pengganti backend/media. */
   mediaDir?: string;
+  /**
+   * Poke settler U10: listing baru berarti ada pekerjaan registrasi
+   * contentHash on-chain. Fire-and-forget — pencatatan asinkron, kreator
+   * tidak pernah menunggu konfirmasi Base Sepolia; tanpa wiring ini pun
+   * settler menemukan barisnya lewat scan berkala (DB adalah antreannya).
+   */
+  onListingCreated?: () => void;
 }
 
 type FieldErrors = Record<string, string>;
@@ -269,6 +276,15 @@ export function listingRoutes(deps: ListingRouteDeps) {
         },
         500,
       );
+    }
+
+    // Baris listing sudah commit — settler boleh mulai mendaftarkannya
+    // on-chain. try/catch karena kegagalan poke tidak boleh menggagalkan
+    // respons 201: barisnya tetap tertangkap scan berikutnya.
+    try {
+      deps.onListingCreated?.();
+    } catch (error) {
+      console.error(`[listings] settler notify failed for "${id}":`, error);
     }
 
     return c.json(listingToPublicEntry(getListing(db, id)!), 201);

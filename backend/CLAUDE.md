@@ -1,11 +1,12 @@
 # backend/ — Promit API (U3) di atas modul katalog (U2), unlock x402 (U4)
 
 Bun package. `bun test` / `bun run typecheck` / `bun run dev` (server,
-port 3001) / `bun run mirror` from this directory. U2 owns everything under
-`src/catalog/`, `scripts/mirror-media.ts`, and `data/catalog.json`; U3 owns
-`src/index.ts`, `src/routes/catalog.ts`, `src/middleware/cors.ts`,
-`src/db.ts`; U4 owns `src/x402/` and `src/routes/unlock.ts`; U7 owns
-`src/catalog/listing.ts` and `src/routes/listings.ts`.
+port 3001) / `bun run mirror` / `bun run settler` (worker U10) from this
+directory. U2 owns everything under `src/catalog/`,
+`scripts/mirror-media.ts`, and `data/catalog.json`; U3 owns `src/index.ts`,
+`src/routes/catalog.ts`, `src/middleware/cors.ts`, `src/db.ts`; U4 owns
+`src/x402/` and `src/routes/unlock.ts`; U7 owns `src/catalog/listing.ts`
+and `src/routes/listings.ts`; U10 owns `src/settler/`.
 
 ## API contract (U3<->U5, locked by the coordinator 2026-08-07)
 
@@ -144,6 +145,62 @@ media, mirror upload) + `src/routes/listings.ts` (route), mounted
   pernah diterbitkan untuk listing (akan terbayangi selamanya).
 - Tes menandatangani dengan kunci viem sungguhan dan menempuh tarian 402
   U4 di seam `FacilitatorClient` yang sama dengan `unlock.test.ts`.
+
+## Settler on-chain (U10)
+
+`src/settler/` — `chain.ts` (seam `RegistryChain`: semua panggilan viem,
+nol keputusan), `queue.ts` (antrean job persisten di SQLite), `index.ts`
+(worker: preflight, drain, `import.meta.main` = proses mandiri
+`bun run settler`). Env: `SETTLER_PRIVATE_KEY`, `PROMIT_REGISTRY_ADDRESS`,
+`BASE_SEPOLIA_RPC_URL`, opsional `SETTLER_MIN_ETH` (default 0.0005) dan
+`PROMIT_REGISTRY_DEPLOY_BLOCK`.
+
+**DB ADALAH antreannya.** Enqueue = scan baris yang sudah ditulis U4/U7
+(unlock ber-status pasca-settlement dengan `onchain_tx_hash` NULL; listing
+tanpa `onchain_tx_hash`), idempoten lewat PK `(kind, ref)` di
+`settler_jobs`. Route unlock TIDAK berubah untuk U10 — pencatatan asinkron
+struktural: pembeli tidak pernah menunggu Base Sepolia, chain mati =
+unlock tetap terlayani + job tetap `pending`. `onListingCreated` di route
+listings hanya poke latensi; tanpa itu pun scan berkala menemukan barisnya.
+Job `flagged` = butuh manusia, tidak pernah di-retry otomatis.
+
+Tiga aturan yang menyelamatkan demo (semua diuji di `settler.test.ts`
+dengan FakeChain yang MENGHITUNG transaksi terkirim):
+
+1. **Idempotensi dari kunci TERSIMPAN di registry, bukan EIP-3009.**
+   `isUnlocked(payer, nonce)` dibaca SEBELUM kirim — retry pasca-crash
+   mengirim NOL transaksi. Kontrak memang men-no-op duplikat, tapi sambil
+   menagih gas; nonce USDC hanya unik per-payer dan hanya mencegah
+   transfer ganda, bukan pencatatan ganda. Listing lebih tajam lagi:
+   `registerListing` TIDAK punya guard duplikat on-chain, jadi scan log
+   `ListingRegistered` adalah satu-satunya pagar anti-registrasi-ganda.
+2. **Receipt dulu, registry belakangan.** Hash tx facilitator harus punya
+   receipt sukses sebelum ditulis; `receipt_misses` dihitung TERPISAH dari
+   `attempts` supaya RPC mati tidak terakumulasi jadi vonis "facilitator
+   bohong" (default 3 pengamatan null → flagged; revert → flagged
+   seketika).
+3. **Preflight menolak start dengan error bernama** (`SettlerUnderfunded`,
+   `SettlerRoleMissing`, `SettlerOverprivileged`): saldo di bawah ambang,
+   tanpa `SETTLER_ROLE`, ATAU memegang `UPGRADER_ROLE`/`DEFAULT_ADMIN_ROLE`
+   — kunci backend yang bisa upgrade registry mematahkan model keamanannya.
+
+Jebakan yang sudah dibayar:
+
+- `eth_getLogs` di sepolia.base.org menolak rentang >2000 blok, jadi
+  `fromBlock:'earliest'` mati justru di RPC default. Scan di-chunk per
+  2000 blok dari blok deploy yang ditemukan binary search `eth_getCode`
+  (RPC-nya melayani state historis); inkremental per proses. JANGAN
+  hardcode blok deploy yang salah — jawaban "tidak ada" palsu = listing
+  ganda.
+- `settler_onchain_listings` memetakan slug prompt → `listingId` numerik
+  registry; mapping ini tidak ada di tempat lain off-chain. Unlock untuk
+  prompt tanpa baris listing di-flag, bukan didaftarkan diam-diam — semua
+  seed bertier free (R3), jadi unlock berbayar selalu menunjuk listing
+  kreator.
+- Verifikasi live read-only (tanpa broadcast): jalankan preflight + baca
+  `isUnlocked`/scan log terhadap proxy — sudah lolos terhadap
+  `0x30c92fFadAd24Ca079227A92A33b78683D36Fde6` (saldo settler 0.002 ETH,
+  hanya `SETTLER_ROLE`). E2E dengan transaksi nyata adalah gerbang U14.
 
 ## The one rule that matters
 
