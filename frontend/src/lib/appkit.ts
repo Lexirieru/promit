@@ -23,6 +23,11 @@ createAppKit({
   adapters: [wagmiAdapter],
   networks,
   projectId,
+  // Without this, a wallet already connected on another chain trips an
+  // UNCLOSABLE "Switch Network" modal on every page — free prompts need no
+  // wallet at all, and the wrong-chain path already has its home INLINE on
+  // UnlockButton (a U6 design-review invariant), offered when it matters.
+  allowUnsupportedChain: true,
   metadata: {
     name: "Promit",
     description: "Pay per prompt. Not per month.",

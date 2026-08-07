@@ -84,6 +84,10 @@ manager.
   suites that mount the real `Providers` mock this module away. Email and
   social login are OFF (`features`): embedded wallets hold no Base Sepolia
   USDC, so those options are dead ends dressed up as choices.
+  `allowUnsupportedChain: true` is REQUIRED: without it a wallet already
+  connected on another chain trips an unclosable "Switch Network" modal on
+  every page (verified in a live browser) — free prompts need no wallet,
+  and wrong-chain already has its inline home on `UnlockButton`.
   `NEXT_PUBLIC_REOWN_PROJECT_ID` (documented in the root `.env.example`)
   falls back to Reown's published localhost-only id so fresh checkouts
   build; deployments must set the real id.
