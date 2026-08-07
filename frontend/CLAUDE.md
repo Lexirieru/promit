@@ -54,8 +54,8 @@ manager.
   confirmation goes through an `aria-live` region.
 - Both `/prompts` pages fetch client-side (build never needs a live
   backend) and name pending/error/empty/not-found states (R27). The
-  detail page's unlock button is U5's placeholder naming the price and
-  the no-gas story; U6 replaces it with the wallet flow.
+  detail page's unlock control is U6's `UnlockButton` (see the wallet
+  section below); free entries use `CopyPromptButton`.
 - The category pills render the full canonical list (mirrors backend
   `CategorySchema`) — including empty categories, which is what makes the
   gallery's empty state reachable. New backend category ⇒ update
@@ -64,6 +64,56 @@ manager.
   inside effects. Patterns already in use: `useSyncExternalStore` for
   matchMedia, id-keyed state that derives back to pending on param change
   (detail page), attempt counters bumped in event handlers (retry).
+
+## Wallet + x402 unlock (U6)
+
+- Stack: wagmi 3 + viem + TanStack Query. `src/lib/wagmi.ts` holds the
+  config (Base Sepolia ONLY — the shared client's policy filter refuses
+  every other network, so more chains would only manufacture wrong-chain
+  states); `src/app/providers.tsx` mounts WagmiProvider + QueryClient in
+  the root layout.
+- `src/lib/unlock.ts` is the ONLY bridge to `@promit/x402-client` (KTD19).
+  It supplies exactly what the package can't give a browser: a
+  sessionStorage spend ledger (injected via `createPromitFetch`'s `ledger`
+  option — corrupt values still fail CLOSED with the shared
+  `SpendLedgerCorruptError`) and a wagmi signer adapter (the client needs
+  only `address` + `signTypedData`). NEVER re-implement the policy filter
+  or cap flow here; `unlockPrompt` sets the per-prompt cap to the
+  ADVERTISED `priceAtomic`, so a 402 demanding more than the catalog
+  showed is refused by the shared filter before any signature.
+- Wallet rejection (EIP-1193 code 4001, walked through the `cause` chain)
+  is detected at the signer seam inside `unlockPrompt` because
+  `@x402/fetch` re-wraps downstream errors into plain `Error`s. Callers
+  get `SignatureRejectedError` / `UnlockFailedError` / the package's
+  `PaymentRefusedError` family; a content-hash mismatch does NOT throw —
+  it returns text + failed check so the UI can show both.
+- `UnlockButton` invariants (design review, do not weaken):
+  - The "signature, not a transaction, no gas" message is INLINE copy on
+    the control, rendered in every pre-unlock state BEFORE the wallet
+    dialog opens. Never demote it to a tooltip.
+  - `settling` is a named state between signature and the verify+settle
+    answer; past 5 s it says the wait is real instead of spinning mutely.
+  - Delivered text is hashed against the hash advertised BEFORE purchase
+    (server-reported hash alone would only prove self-consistency); a
+    mismatch renders as a `role="alert"` box naming both hashes.
+  - Rejection returns to idle with an explanation; settle failure leaves
+    the prompt locked; wrong chain offers `switchChain` to Base Sepolia;
+    disconnected renders `WalletButton` instead of erroring.
+- Build traps: the package's file ledger imports `node:fs`/`os`/`path` at
+  module top level and Turbopack REFUSES Node builtins in browser chunks,
+  so next.config.ts aliases them (browser condition only) to
+  `src/lib/node-builtin-stub.ts`, whose exports throw if ever called.
+  The package's BigInt literals also force `tsconfig target >= ES2020`.
+  A stale `.next` cache can replay old typecheck diagnostics after a
+  tsconfig change — `rm -rf .next` before concluding the fix didn't work.
+- Test seams mirror the layering: `unlock-flow.test.ts` runs the REAL
+  shared-client machinery (mock signer + fetch stub speaking v2
+  `PAYMENT-REQUIRED` headers via `@x402/core/http`, a devDependency pinned
+  at 2.21.0 for exactly this); `unlock-button.test.tsx` mocks wagmi at
+  the hook boundary and `@/lib/unlock` via partial `vi.mock` so the real
+  error classes keep working with `instanceof`. `prompt-detail.test.tsx`
+  renders under the real `Providers` — jsdom has no injected wallet,
+  which is precisely the disconnected state it asserts.
 
 ## Tests
 

@@ -123,12 +123,19 @@ export function mediaUrl(path: string): string {
 }
 
 /**
+ * URL of the unlock route for U6's payment client, which needs the raw URL
+ * (its wrapped fetch answers the 402 itself) rather than a fetch helper.
+ */
+export function promptUrl(id: string): string {
+  return ENDPOINTS.prompt(id);
+}
+
+/**
  * "500000" (atomic USDC, 6 decimals) → "$0.50". Cents always show two
  * digits; sub-cent precision is kept only when non-zero, so "50000" →
  * "$0.05" and "1234567" → "$1.234567".
  */
 export function formatUsdc(priceAtomic: string): string {
-  // BigInt() calls, not literals: tsconfig targets ES2017 (U1's choice).
   const MICRO = BigInt(1_000_000);
   const atomic = BigInt(priceAtomic);
   const whole = atomic / MICRO;
