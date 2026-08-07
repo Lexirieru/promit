@@ -1,0 +1,20 @@
+[2msearching https://promitbackend-production.up.railway.app …[22m
+┌───────────────────────┬──────────────────────────────────┬──────────────┬──────┬───────┐
+│[37m [0m[01mid                   [0m │[37m [0m[01mtitle                           [0m │[37m [0m[01mcategory    [0m │[37m [0m[01mtier[0m │[37m [0m[01mprice[0m │
+├───────────────────────┼──────────────────────────────────┼──────────────┼──────┼───────┤
+│[37m [0m[37mskyelite-private-jets[0m │[37m [0m[37mSkyElite Private Jets           [0m │[37m [0m[37mLanding Page[0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mportal               [0m │[37m [0m[37mPortal                          [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mstillmind            [0m │[37m [0m[37mStillmind                       [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37m3d-collectible-hero  [0m │[37m [0m[37m3D Collectible Hero             [0m │[37m [0m[37m3D Website  [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mbold-studio          [0m │[37m [0m[37mBold Studio                     [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mcontact-cybernetic   [0m │[37m [0m[37mContact Cybernetic              [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37maetheris-voyage      [0m │[37m [0m[37mAetheris Voyage                 [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mimmersive-ocean      [0m │[37m [0m[37mImmersive Ocean                 [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mtech-forward         [0m │[37m [0m[37mTech-Forward                    [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mretro-futurist       [0m │[37m [0m[37mRetro-Futurist                  [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37minteractive-discovery[0m │[37m [0m[37mInteractive Discovery           [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mvelorah              [0m │[37m [0m[37mVelorah                         [0m │[37m [0m[37mAgency      [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mvex-ventures         [0m │[37m [0m[37mVEX Ventures                    [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+│[37m [0m[37mbloom-ai             [0m │[37m [0m[37mBloom AI                        [0m │[37m [0m[37mHero        [0m │[37m [0m[37mfree[0m │[37m [0m[37m free[0m │
+└───────────────────────┴──────────────────────────────────┴──────────────┴──────┴───────┘
+[2m14 prompts · "promit preview <id>" for details[22m
