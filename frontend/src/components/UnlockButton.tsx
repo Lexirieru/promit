@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useAccount, useSignTypedData, useSwitchChain } from "wagmi";
+import { useAccount, useSignMessage, useSignTypedData, useSwitchChain } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import {
   AlertTriangle,
@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { PaymentRefusedError } from "@promit/x402-client";
 import WalletButton from "@/components/WalletButton";
-import { formatUsdc, type PublicCatalogEntry } from "@/lib/api";
+import { fetchOwnedUnlocks, formatUsdc, type PublicCatalogEntry } from "@/lib/api";
+import { fetchOwnedPrompt } from "@/lib/entitlement";
 import {
   SignatureRejectedError,
   UnlockFailedError,
@@ -58,9 +59,34 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
   const { address, isConnected, chainId } = useAccount();
   const { switchChain, isPending: switching } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
+  const { signMessageAsync } = useSignMessage();
 
   const [phase, setPhase] = useState<Phase>({ name: "idle" });
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Kepemilikan diperiksa saat wallet terhubung: pembeli yang kembali tidak
+  // boleh melihat tombol tagih untuk prompt yang sudah dia beli. State
+  // di-key pada (wallet, prompt) dan diturunkan kembali saat salah satunya
+  // berganti — pola id-keyed halaman detail, tanpa setState sinkron di
+  // effect. Kegagalan fetch diperlakukan sebagai "belum terbukti memiliki":
+  // jalur bayar yang tampil tetap benar, hanya tidak optimal.
+  const ownKey = address && entry.tier === "paid" ? `${address.toLowerCase()}|${entry.id}` : null;
+  const [ownedState, setOwnedState] = useState<{ key: string } | null>(null);
+  useEffect(() => {
+    if (!ownKey || !address) return;
+    let cancelled = false;
+    fetchOwnedUnlocks(address)
+      .then((unlocks) => {
+        if (!cancelled && unlocks.some((unlock) => unlock.id === entry.id)) {
+          setOwnedState({ key: ownKey });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [ownKey, address, entry.id]);
+  const alreadyOwned = ownedState !== null && ownedState.key === ownKey;
 
   useEffect(
     () => () => {
@@ -124,6 +150,44 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
     }
   };
 
+  // Jalur pembeli-yang-kembali: satu tanda tangan GRATIS yang membuktikan
+  // kepemilikan (bukan pesan pembayaran), lalu teksnya — tidak ada tagihan
+  // kedua. personal_sign tidak tergantung chain, jadi jalur ini tidak
+  // memerlukan switch network.
+  const viewOwned = async () => {
+    if (!address) return;
+    setPhase({ name: "signing" });
+    try {
+      const result = await fetchOwnedPrompt({
+        promptId: entry.id,
+        payer: address,
+        advertisedContentHash: entry.contentHash,
+        signMessage: (message) => signMessageAsync({ message }),
+      });
+      setPhase({ name: "unlocked", result });
+    } catch (error) {
+      if (error instanceof SignatureRejectedError) {
+        setPhase({ name: "idle", notice: { kind: "rejected", message: error.message } });
+      } else if (error instanceof UnlockFailedError) {
+        setPhase({
+          name: "idle",
+          notice: {
+            kind: "failed",
+            message: `Re-opening your purchased prompt failed: ${error.message}`,
+          },
+        });
+      } else {
+        setPhase({
+          name: "idle",
+          notice: {
+            kind: "failed",
+            message: "Re-opening your purchased prompt failed unexpectedly. Try again.",
+          },
+        });
+      }
+    }
+  };
+
   if (phase.name === "unlocked") {
     return <UnlockedView entry={entry} result={phase.result} />;
   }
@@ -132,14 +196,32 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
 
   return (
     <div className="flex flex-col gap-2">
+      {alreadyOwned && (
+        <p
+          role="status"
+          className="flex items-center gap-1.5 text-sm font-medium text-green-700"
+        >
+          <Check aria-hidden className="h-4 w-4" />
+          You already own this prompt — you will not be charged again.
+        </p>
+      )}
+
       {/* The product's actual argument, inline and ALWAYS visible before the
           wallet dialog opens (design review) — never only a tooltip. */}
       <p className="flex items-start gap-1.5 text-xs text-gray-600">
         <PenLine aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          Unlocking asks your wallet for a <strong>signature</strong> on a USDC
-          payment message — it is not a transaction, and it needs no gas.
-        </span>
+        {alreadyOwned ? (
+          <span>
+            Viewing asks your wallet for a free <strong>signature</strong> that
+            proves ownership — it is not a transaction, it needs no gas, and
+            nothing is paid again.
+          </span>
+        ) : (
+          <span>
+            Unlocking asks your wallet for a <strong>signature</strong> on a USDC
+            payment message — it is not a transaction, and it needs no gas.
+          </span>
+        )}
       </p>
 
       {!isConnected && (
@@ -152,7 +234,24 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
           Connected: a compact address + disconnect row above the button. */}
       <WalletButton />
 
-      {wrongChain && (
+      {isConnected && alreadyOwned && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={viewOwned}
+          aria-label={`View your unlocked prompt ${entry.title}`}
+          className="inline-flex w-fit items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait disabled:bg-gray-500"
+        >
+          {busy ? (
+            <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+          ) : (
+            <Unlock aria-hidden className="h-4 w-4" />
+          )}
+          {phase.name === "signing" ? "Waiting for your signature…" : "View your prompt"}
+        </button>
+      )}
+
+      {!alreadyOwned && wrongChain && (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-gray-600">
             Your wallet is on the wrong network — Promit pays on Base Sepolia
@@ -169,7 +268,7 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
         </div>
       )}
 
-      {isConnected && !wrongChain && (
+      {isConnected && !wrongChain && !alreadyOwned && (
         <button
           type="button"
           disabled={busy}
@@ -192,7 +291,9 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
       <div role="status" aria-live="polite" className="flex flex-col gap-1">
         {phase.name === "signing" && (
           <p className="text-xs text-gray-600">
-            Check your wallet — approve the payment signature to continue.
+            {alreadyOwned
+              ? "Check your wallet — approve the free ownership signature to continue."
+              : "Check your wallet — approve the payment signature to continue."}
           </p>
         )}
         {phase.name === "settling" && (
@@ -240,7 +341,9 @@ function UnlockedView({
     <div className="flex flex-col gap-3" data-testid="unlocked">
       <p role="status" className="flex items-center gap-1.5 text-sm font-medium text-green-700">
         <Check aria-hidden className="h-4 w-4" />
-        Unlocked — the full prompt is yours.
+        {result.alreadyOwned
+          ? "Already yours — re-opened without a new charge."
+          : "Unlocked — the full prompt is yours."}
       </p>
 
       {hashOk ? (

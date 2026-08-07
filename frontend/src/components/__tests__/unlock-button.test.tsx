@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useAccount, useConnect, useDisconnect, useSignTypedData, useSwitchChain } from "wagmi";
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useSignMessage,
+  useSignTypedData,
+  useSwitchChain,
+} from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 
 import UnlockButton from "@/components/UnlockButton";
@@ -23,6 +30,7 @@ vi.mock("wagmi", () => ({
   useAccount: vi.fn(),
   useConnect: vi.fn(),
   useDisconnect: vi.fn(),
+  useSignMessage: vi.fn(),
   useSignTypedData: vi.fn(),
   useSwitchChain: vi.fn(),
 }));
@@ -32,6 +40,13 @@ vi.mock("@/lib/unlock", async (importOriginal) => ({
   // only the flow entry point is replaced.
   ...(await importOriginal<typeof import("@/lib/unlock")>()),
   unlockPrompt: vi.fn(),
+}));
+
+// The ownership probe answers "not owned" here so every scenario below keeps
+// exercising the paid path; the owned path has its own test file.
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  fetchOwnedUnlocks: vi.fn(async () => []),
 }));
 
 const ADDRESS = "0x1111111111111111111111111111111111111111" as const;
@@ -99,6 +114,9 @@ beforeEach(() => {
   vi.mocked(useSignTypedData).mockReturnValue({
     signTypedDataAsync: vi.fn(),
   } as unknown as ReturnType<typeof useSignTypedData>);
+  vi.mocked(useSignMessage).mockReturnValue({
+    signMessageAsync: vi.fn(),
+  } as unknown as ReturnType<typeof useSignMessage>);
   vi.mocked(useSwitchChain).mockReturnValue({
     switchChain,
     isPending: false,

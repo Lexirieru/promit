@@ -26,6 +26,8 @@ const ENDPOINTS = {
   catalogEntry: (id: string) => `${API_BASE}/v1/catalog/${encodeURIComponent(id)}`,
   /** Unlock route (U4): free tier returns text, paid returns 402. */
   prompt: (id: string) => `${API_BASE}/v1/prompts/${encodeURIComponent(id)}`,
+  /** Delivered unlocks of one wallet — metadata only, never prompt text. */
+  unlocks: (payer: string) => `${API_BASE}/v1/unlocks?payer=${encodeURIComponent(payer)}`,
 } as const;
 
 /** Canonical category list, mirroring `CategorySchema` in the backend.
@@ -115,6 +117,26 @@ export async function fetchPromptText(id: string): Promise<string> {
   const text = data.body ?? data.text;
   if (!text) throw new ApiError(res.status, `empty prompt body for ${id}`);
   return text;
+}
+
+/** One delivered unlock from GET /v1/unlocks — what a wallet already owns. */
+export interface OwnedUnlock {
+  id: string;
+  unlockedAt: string;
+  txHash: string | null;
+  contentHash: string;
+}
+
+/**
+ * Prompt yang sudah dibuka sebuah wallet. Daftar ini metadata belaka (tx
+ * hash-nya toh publik on-chain); TEKS prompt tetap hanya keluar dari
+ * `/v1/prompts/:id` dengan bukti entitlement bertanda tangan
+ * (lib/entitlement.ts) — daftar ini cuma memberi tahu UI kapan menawarkan
+ * jalur "sudah kamu miliki" alih-alih menagih lagi.
+ */
+export async function fetchOwnedUnlocks(payer: string): Promise<OwnedUnlock[]> {
+  const data = await getJson<{ unlocks: OwnedUnlock[] }>(ENDPOINTS.unlocks(payer));
+  return data.unlocks;
 }
 
 /** Absolute URL for a catalog `/media/...` path (media is served by the backend). */
