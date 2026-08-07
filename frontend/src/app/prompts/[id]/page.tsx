@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Sparkles, Unlock } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import Nav from "@/components/Nav";
 import MediaPreview from "@/components/MediaPreview";
 import CopyPromptButton from "@/components/CopyPromptButton";
+import UnlockButton from "@/components/UnlockButton";
 import {
   ApiError,
   fetchCatalogEntry,
@@ -19,9 +20,8 @@ import {
  * unknown id (a 404 from the catalog, not an error), error + retry for
  * everything else, and the loaded entry.
  *
- * The unlock control here is U5's placeholder: it names the price and the
- * signature-not-transaction story, and U6 replaces it with the real
- * wallet flow. Free entries reuse the same copy control as the card.
+ * The unlock control is U6's `UnlockButton` (wallet connect, x402 payment,
+ * hash check). Free entries reuse the same copy control as the card.
  */
 
 type LoadState =
@@ -161,20 +161,7 @@ function PromptDetail({ entry }: { entry: PublicCatalogEntry }) {
 
         <div className="mt-2">
           {paid ? (
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                aria-label={`Unlock ${entry.title} for ${formatUsdc(entry.priceAtomic)} in USDC`}
-                className="inline-flex w-fit items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                <Unlock aria-hidden className="h-4 w-4" />
-                Unlock for {formatUsdc(entry.priceAtomic)}
-              </button>
-              <p className="text-xs text-gray-500">
-                Unlocking signs a USDC message — not a transaction. No gas
-                needed.
-              </p>
-            </div>
+            <UnlockButton entry={entry} />
           ) : (
             <CopyPromptButton promptId={entry.id} title={entry.title} />
           )}
