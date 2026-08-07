@@ -13,6 +13,7 @@ import {
 } from "@promit/x402-client";
 
 import { apiBaseUrl, fetchEntry, fetchFreeUnlock, unlockUrl, type PublicEntry, type UnlockSuccess } from "../api";
+import { ENTITLEMENT_PROOF_HEADER, buildEntitlementProof } from "../entitlement";
 import { emit, fail, note, stdinIsInteractive, success, warn } from "../output";
 import { resolveSigner } from "../wallet/keystore";
 
@@ -32,7 +33,11 @@ function deliver(entry: PublicEntry, unlock: UnlockSuccess, json: boolean): neve
     emit(unlock.text);
   }
   note(pc.dim(`source: ${unlock.attribution.source} — ${unlock.attribution.note}`));
-  if (unlock.txHash) {
+  if (unlock.alreadyOwned) {
+    success(
+      `already owned — no new charge${unlock.txHash ? ` (original tx ${unlock.txHash})` : ""}`,
+    );
+  } else if (unlock.txHash) {
     success(`paid — tx ${unlock.txHash} (${unlock.network ?? "unknown network"})`);
   }
   if (!check.ok) {
@@ -134,6 +139,39 @@ export default defineCommand({
       fail((error as Error).message);
     }
     note(pc.dim(`wallet ${signer.account.address} (${signer.source === "env" ? "PROMIT_PRIVATE_KEY" : signer.file})`));
+
+    // Kepemilikan SEBELUM mesin pembayaran: pembeli yang kembali tidak
+    // membayar ulang. Buktinya tanda tangan lokal gratis (EIP-191) — server
+    // menjawab teks + alreadyOwned bila wallet ini punya unlock delivered,
+    // dan 402 biasa bila tidak, yang jatuh ke jalur bayar di bawah.
+    let probe: Response | null = null;
+    try {
+      probe = await fetch(unlockUrl(base, args.id), {
+        headers: {
+          Accept: "application/json",
+          [ENTITLEMENT_PROOF_HEADER]: await buildEntitlementProof(signer.account, entry.id),
+        },
+      });
+    } catch {
+      // Katalog barusan terjangkau; anggap cegukan sesaat dan biarkan jalur
+      // bayar (yang punya penanganan error lengkap) yang memutuskan.
+      probe = null;
+    }
+    if (probe?.status === 200) {
+      const owned = (await probe.json().catch(() => null)) as UnlockSuccess | null;
+      if (owned?.alreadyOwned && typeof owned.text === "string") {
+        note(pc.dim(`this wallet already unlocked "${entry.id}" — not paying again`));
+        deliver(entry, owned, args.json === true);
+      }
+    } else if (probe?.status === 401) {
+      // Bukti kami ditolak (jam mesin melenceng?). Melanjutkan berarti
+      // menagih pemilik dua kali — kebalikan dari tujuan jalur ini.
+      const body = (await probe.json().catch(() => null)) as { message?: string } | null;
+      fail(
+        `the ownership check was rejected: ${body?.message ?? "HTTP 401"}`,
+        "Nothing was purchased. Check this machine's clock, then retry.",
+      );
+    }
 
     const handle = createPromitFetch({
       signer: signer.account,
