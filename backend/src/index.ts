@@ -7,6 +7,7 @@ import { loadCatalogFile } from "./catalog/index.ts";
 import { openDb } from "./db.ts";
 import { paymentCors } from "./middleware/cors.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { listingRoutes } from "./routes/listings.ts";
 import { unlockRoutes } from "./routes/unlock.ts";
 
 /**
@@ -43,6 +44,11 @@ export function createApp(options: AppOptions = {}) {
   // PAYMENT-* headers this route depends on.
   app.route("/v1/prompts", unlockRoutes({ catalog, db }));
 
+  // U7: creator listing — bounds terpublikasi, prepare (hash+duplikat), dan
+  // submit multipart bertanda tangan EIP-191. Upload media mendarat di
+  // media/uploads/ (gitignored) dan tersaji lewat route /media/* di bawah.
+  app.route("/v1/listings", listingRoutes({ catalog, db }));
+
   // R5: previews come from Promit-owned storage. backend/media/ is the
   // mirror output U2 committed; catalog media fields are /media/<file>.
   app.get("/media/*", async (c) => {
@@ -64,9 +70,14 @@ export function createApp(options: AppOptions = {}) {
       );
     }
     // Media files are id-keyed mirror outputs; re-running the pipeline
-    // never changes an id, so a day of caching is safe.
+    // never changes an id, so a day of caching is safe. nosniff karena
+    // media/uploads/ (U7) berisi byte kiriman pengguna: tanpa ini, browser
+    // lama bisa menebak-nebak konten menjadi HTML pada origin API.
     return new Response(file, {
-      headers: { "Cache-Control": "public, max-age=86400" },
+      headers: {
+        "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
+      },
     });
   });
 
