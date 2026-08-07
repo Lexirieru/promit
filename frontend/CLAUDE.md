@@ -36,6 +36,34 @@ manager.
   old CloudFront hero transcoded to 1280x720 H.264 CRF 28, muted, faststart
   (22 MB → 1.2 MB); if you replace it, keep it in that size class.
 
+## Agent onboarding (landing)
+
+- Root `page.tsx` sekarang scrollable: `h-screen overflow-hidden` yang dulu
+  ada di root PINDAH ke `<section>` hero (Footer dan overlay menu mobile
+  ber-`absolute` tetap ter-anchor benar karena section itu `relative`).
+  `AgentOnboarding` dirender di bawah hero.
+- `src/components/AgentOnboarding.tsx` adalah permukaan konversi utama:
+  satu blok copy-paste per target (plugin Claude Code, `claude mcp add`,
+  JSON `mcpServers` generik untuk Cursor/Windsurf/Cline/OpenClaw, CLI).
+  Setiap perintah DIAMBIL dari repo dan sudah dijalankan sebelum ditulis
+  (`bun cli/src/cli.ts`, `bun backend/src/index.ts`, `claude --plugin-dir
+  ./plugin` dari plugin/README.md, bentuk `mcpServers` dari `.mcp.json`
+  root). Jangan menambah target dengan perintah yang belum diverifikasi
+  jalan.
+- Kejujuran dikunci `agent-onboarding.test.tsx`: snippet tidak boleh
+  menyebut `npx promit` (belum dipublish ke npm), tiap snippet wajib
+  menyebut Base Sepolia USDC + "no ETH", dan satu-satunya host yang boleh
+  muncul adalah github/localhost:3001/faucet.circle.com — backend belum
+  dideploy, jangan mengarang domain produksi.
+- Tab mengikuti pola WAI-ARIA: roving tabindex, panah kiri/kanan +
+  Home/End dengan selection-follows-focus, panel ber-`aria-labelledby`.
+  Tombol copy meniru pola `CopyPromptButton` (state bernama + konfirmasi
+  lewat region `aria-live`) dan menyalin snippet tab yang SEDANG aktif.
+- Seksi ini sengaja tanpa entrance stagger (`opacity: 0` inline) — dia di
+  bawah fold, delay berbasis waktu sudah lewat saat user scroll. Kalau
+  suatu saat diberi animasi, wajib pakai guarded classes (lihat aturan
+  reduced-motion di atas).
+
 ## Gallery (U5)
 
 - `src/lib/api.ts` is the ONLY place that knows backend paths, pinned to
