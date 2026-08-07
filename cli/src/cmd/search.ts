@@ -29,7 +29,7 @@ export default defineCommand({
     },
     category: { type: "string", description: "Exact category filter, e.g. \"Landing Page\"" },
     tier: { type: "string", description: "Tier filter: free or paid" },
-    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or http://localhost:3001)" },
+    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or https://promitbackend-production.up.railway.app)" },
     json: { type: "boolean", description: "Print machine-readable JSON instead of a table" },
   },
   async run({ args }) {

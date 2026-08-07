@@ -13,7 +13,7 @@ export default defineCommand({
   },
   args: {
     id: { type: "positional", required: true, description: "Prompt id, e.g. email-landing-page" },
-    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or http://localhost:3001)" },
+    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or https://promitbackend-production.up.railway.app)" },
     json: { type: "boolean", description: "Print machine-readable JSON" },
   },
   async run({ args }) {

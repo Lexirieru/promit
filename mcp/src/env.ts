@@ -55,7 +55,7 @@ export interface McpConfig {
   sessionCapAtomic: bigint;
 }
 
-export const DEFAULT_API_URL = "http://localhost:3001";
+export const DEFAULT_API_URL = "https://promitbackend-production.up.railway.app";
 
 /**
  * Caps come from the environment, never from tool arguments: an agent that

@@ -47,7 +47,7 @@ export interface UnlockSuccess {
   alreadyOwned?: boolean;
 }
 
-export const DEFAULT_API_URL = "http://localhost:3001";
+export const DEFAULT_API_URL = "https://promitbackend-production.up.railway.app";
 
 /** Resolution order: --api flag > PROMIT_API_URL > localhost default. */
 export function apiBaseUrl(flag?: string): string {

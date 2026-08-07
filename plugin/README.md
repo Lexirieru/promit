@@ -44,7 +44,7 @@ The skill's slash-command name comes from its **directory** (`skills/promit/`
 | Variable | Meaning |
 |---|---|
 | `PROMIT_PRIVATE_KEY` | Signing key, **required**. Both committed `.mcp.json` files reference it as `${PROMIT_PRIVATE_KEY}` (expanded by Claude Code); a missing/invalid key is a named startup error from the server. |
-| `PROMIT_API_URL` | Backend base URL (default `http://localhost:3001`). |
+| `PROMIT_API_URL` | Backend base URL (default `https://promitbackend-production.up.railway.app`). |
 | `PROMIT_MAX_PRICE` | Per-prompt cap in human USDC, e.g. `0.10`. |
 | `PROMIT_SESSION_CAP` | Cumulative session cap in human USDC. Spend is ledgered on disk and shared with the CLI, so it survives restarts. |
 | `PROMIT_CONFIG_DIR` | Moves the ledger/config dir (default `~/.config/promit`). |

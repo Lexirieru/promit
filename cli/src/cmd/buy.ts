@@ -71,7 +71,7 @@ export default defineCommand({
       description: "Cumulative session cap in USDC (default $1.00); persists in the spend ledger",
     },
     keystore: { type: "string", description: "Keystore name under ~/.config/promit/keystores (default: default)" },
-    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or http://localhost:3001)" },
+    api: { type: "string", description: "Promit API base URL (default: PROMIT_API_URL or https://promitbackend-production.up.railway.app)" },
     json: { type: "boolean", description: "Print the full unlock response as JSON" },
   },
   async run({ args }) {

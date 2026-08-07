@@ -26,7 +26,7 @@ describe("resolveSigner", () => {
 describe("resolveConfig", () => {
   test("defaults match the shared client's caps", () => {
     const config = resolveConfig({});
-    expect(config.apiBase).toBe("http://localhost:3001");
+    expect(config.apiBase).toBe("https://promitbackend-production.up.railway.app");
     expect(config.perPromptCapAtomic).toBe(DEFAULT_PER_PROMPT_CAP_ATOMIC);
     expect(config.sessionCapAtomic).toBe(DEFAULT_SESSION_CAP_ATOMIC);
   });

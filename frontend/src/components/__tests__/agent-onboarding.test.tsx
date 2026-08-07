@@ -40,14 +40,14 @@ describe("target honesty", () => {
     }
   });
 
-  it("points at no invented production host — only localhost, github, and the faucet", () => {
+  it("points at no invented host — only the deployed API, github, and the faucet", () => {
     for (const target of ONBOARDING_TARGETS) {
       const hosts =
         `${target.snippet}\n${target.note}`.match(/https?:\/\/[^\s"'`]+/g) ??
         [];
       for (const host of hosts) {
         expect(host).toMatch(
-          /^(https:\/\/github\.com\/Lexirieru\/promit\.git|http:\/\/localhost:3001|https:\/\/faucet\.circle\.com)/,
+          /^(https:\/\/github\.com\/Lexirieru\/promit\.git|https:\/\/promitbackend-production\.up\.railway\.app|https:\/\/faucet\.circle\.com)/,
         );
       }
     }

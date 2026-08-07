@@ -17,7 +17,7 @@
  */
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_PROMIT_API_URL ?? "http://localhost:3001";
+  process.env.NEXT_PUBLIC_PROMIT_API_URL ?? "https://promitbackend-production.up.railway.app";
 
 const ENDPOINTS = {
   /** Public catalog list; optional `?category=` filter. */

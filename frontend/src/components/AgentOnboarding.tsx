@@ -10,7 +10,7 @@ import { Check, Copy } from "lucide-react";
  * plugin path from plugin/README.md, the MCP shape from the root
  * .mcp.json, the CLI entry straight off the checkout. Nothing invented:
  * the backend is not deployed, so every surface points at
- * http://localhost:3001, and `npx promit` is only ever mentioned as
+ * https://promitbackend-production.up.railway.app, and `npx promit` is only ever mentioned as
  * not-yet-published (the test suite enforces both).
  *
  * Tabs follow the WAI-ARIA tabs pattern: roving tabindex, arrow-key
@@ -78,7 +78,7 @@ claude mcp add promit --env PROMIT_PRIVATE_KEY=0x... -- bun "$(pwd)/mcp/src/serv
       "args": ["/absolute/path/to/promit/mcp/src/server.ts"],
       "env": {
         "PROMIT_PRIVATE_KEY": "0x<wallet holding Base Sepolia USDC, no ETH needed>",
-        "PROMIT_API_URL": "http://localhost:3001"
+        "PROMIT_API_URL": "https://promitbackend-production.up.railway.app"
       }
     }
   }
@@ -220,7 +220,7 @@ export default function AgentOnboarding() {
       </p>
       <p className="mb-8 max-w-2xl text-sm text-gray-500">
         The hosted backend is not deployed yet, so every setup below talks to
-        a local API at http://localhost:3001. The wallet only needs Base
+        a local API at https://promitbackend-production.up.railway.app. The wallet only needs Base
         Sepolia USDC — never ETH.
       </p>
 
