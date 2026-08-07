@@ -16,8 +16,15 @@
  * answer 402 and are U6's job.
  */
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_PROMIT_API_URL ?? "https://promitbackend-production.up.railway.app";
+/**
+ * Trailing slashes are stripped because a host UI that accepts a base URL will
+ * happily store `https://api.example.com/`, and every path here is joined with
+ * a leading `/`. The resulting `//v1/catalog` is a 404 that reads like the API
+ * is down rather than like a config typo.
+ */
+export const API_BASE = (
+  process.env.NEXT_PUBLIC_PROMIT_API_URL ?? "https://promitbackend-production.up.railway.app"
+).replace(/\/+$/, "");
 
 const ENDPOINTS = {
   /** Public catalog list; optional `?category=` filter. */
