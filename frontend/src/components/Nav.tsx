@@ -34,8 +34,9 @@ export default function Nav() {
           <Image
             src="/promit-logo.png"
             alt="Promit"
-            width={32}
-            height={32}
+            width={64}
+            height={64}
+            className="h-12 w-12 sm:h-14 sm:w-14"
             priority
           />
         </Link>
