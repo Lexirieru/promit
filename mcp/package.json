@@ -1,0 +1,23 @@
+{
+  "name": "@promit/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Promit MCP server: exposes search, preview, and buy as tools over stdio. Payments go through @promit/x402-client so cap enforcement is the same code the CLI runs (KTD19).",
+  "scripts": {
+    "start": "bun src/server.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "@promit/x402-client": "workspace:*",
+    "viem": "^2.44.4",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "@x402/core": "2.21.0",
+    "typescript": "^5.9.3"
+  }
+}
