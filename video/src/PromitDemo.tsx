@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, Sequence} from 'remotion';
+import {AbsoluteFill, Audio, Sequence, interpolate, staticFile} from 'remotion';
 import {Background} from './components/Background';
 import {Agent, AGENT_LEN} from './scenes/Agent';
 import {EndCard, END_LEN} from './scenes/EndCard';
@@ -20,6 +20,18 @@ export const PromitDemo: React.FC = () => {
   };
   return (
     <AbsoluteFill>
+      {/* "Raising Me Higher" — Mixkit Stock Music Free License (see README). */}
+      <Audio
+        src={staticFile('assets/music.mp3')}
+        volume={(f) =>
+          interpolate(
+            f,
+            [0, 20, TOTAL_FRAMES - 105, TOTAL_FRAMES - 15],
+            [0, 0.55, 0.55, 0],
+            {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+          )
+        }
+      />
       <Background />
       <Sequence {...seq(HOOK_LEN)} name="Hook">
         <Hook />

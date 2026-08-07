@@ -1,8 +1,13 @@
 # Promit demo video
 
 60–90s demo for the ChainHack 2026 submission, built with [Remotion](https://remotion.dev).
-Output: `out/promit-demo.mp4` (1920×1080, 30 fps, ~70 s, silent by design — no
-copyrighted audio).
+Output: `out/promit-demo.mp4` (1920×1080, 30 fps, ~70 s).
+
+Soundtrack: **"Raising Me Higher"** (`public/assets/music.mp3`), used under the
+[Mixkit Stock Music Free License](https://mixkit.co/license/#musicFree) — free
+for video use, no attribution required, no copyrighted-music risk. Volume is
+enveloped in `src/PromitDemo.tsx` (fade-in, bed at 0.55, fade-out on the end
+card).
 
 ## Honesty policy
 
