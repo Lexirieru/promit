@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import Nav from "@/components/Nav";
 import CategoryFilter from "@/components/CategoryFilter";
+import TierFilter from "@/components/TierFilter";
 import PromptCard from "@/components/PromptCard";
-import { fetchCatalog, type Category, type PublicCatalogEntry } from "@/lib/api";
+import { fetchCatalog, type Category, type PublicCatalogEntry, type Tier } from "@/lib/api";
 
 /**
  * The gallery. Fetches the full public catalog once and filters
@@ -27,6 +28,7 @@ type LoadState =
 export default function PromptsPage() {
   const [load, setLoad] = useState<LoadState>({ phase: "pending" });
   const [category, setCategory] = useState<Category | null>(null);
+  const [tier, setTier] = useState<Tier | null>(null);
   // Bumped by the retry control; the effect refetches on every bump.
   const [attempt, setAttempt] = useState(0);
 
@@ -49,12 +51,26 @@ export default function PromptsPage() {
     setAttempt((n) => n + 1);
   };
 
+  // Category and tier compose: both null shows everything, either one narrows,
+  // both narrow together. Filtering client-side keeps every pill instant — the
+  // catalog is fetched once and is small enough that a round-trip per pill
+  // would be slower and could fail where a local filter cannot.
   const visible =
     load.phase === "ready"
-      ? category === null
-        ? load.entries
-        : load.entries.filter((e) => e.category === category)
+      ? load.entries.filter(
+          (e) =>
+            (category === null || e.category === category) &&
+            (tier === null || e.tier === tier),
+        )
       : [];
+
+  const activeFilters = [category, tier === null ? null : tier === "free" ? "Free" : "Premium"]
+    .filter(Boolean)
+    .join(" + ");
+  const clearAll = () => {
+    setCategory(null);
+    setTier(null);
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -79,6 +95,9 @@ export default function PromptsPage() {
           style={{ animationDelay: "0.2s", opacity: 0 }}
         >
           <CategoryFilter selected={category} onSelect={setCategory} />
+          <div className="mt-3">
+            <TierFilter selected={tier} onSelect={setTier} />
+          </div>
         </div>
 
         {load.phase === "pending" && (
@@ -117,22 +136,22 @@ export default function PromptsPage() {
         {load.phase === "ready" && visible.length === 0 && (
           <div className="rounded-2xl border border-gray-200 px-6 py-16 text-center">
             <p className="mb-1 text-sm font-medium text-black">
-              {category === null
+              {activeFilters === ""
                 ? "The catalog is empty"
-                : `No prompts in ${category} yet`}
+                : `No prompts match ${activeFilters}`}
             </p>
             <p className="mb-5 text-sm text-gray-600">
-              {category === null
+              {activeFilters === ""
                 ? "Nothing has been listed yet. Check back soon."
-                : "Nobody has listed a prompt in this category so far."}
+                : "Nobody has listed a prompt matching that combination so far."}
             </p>
-            {category !== null && (
+            {activeFilters !== "" && (
               <button
                 type="button"
-                onClick={() => setCategory(null)}
+                onClick={clearAll}
                 className="rounded-full border border-gray-300 px-5 py-2.5 text-sm font-medium text-black transition-colors hover:border-black focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 focus-visible:outline-none"
               >
-                Show all categories
+                Clear filters
               </button>
             )}
           </div>

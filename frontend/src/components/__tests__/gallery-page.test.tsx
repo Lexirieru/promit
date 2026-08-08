@@ -92,10 +92,12 @@ describe("category filter", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Travel" }));
     expect(screen.queryAllByRole("article")).toHaveLength(0);
-    expect(screen.getByText("No prompts in Travel yet")).toBeTruthy();
+    // Copy names every active filter now that price composes with category,
+    // so a reader with two pills on knows which one to relax.
+    expect(screen.getByText("No prompts match Travel")).toBeTruthy();
 
     // The empty state offers the way back.
-    fireEvent.click(screen.getByRole("button", { name: "Show all categories" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getAllByRole("article")).toHaveLength(entries.length);
   });
 });
