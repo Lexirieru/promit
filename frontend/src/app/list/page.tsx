@@ -335,7 +335,15 @@ export default function ListPromptPage() {
                   <span className="text-xs text-gray-500">
                     Run the prompt, capture the result as an image or short
                     clip, and upload the file. Links aren&apos;t accepted:
-                    previews are served from Promit-owned storage only.
+                    previews are served from Promit-owned storage only, so a
+                    URL can&apos;t change under a buyer after they paid.
+                  </span>
+                  {/* The limits the server enforces, said before the upload
+                      rather than after it. A rejection that only arrives on
+                      submit costs the creator the whole form. */}
+                  <span className="text-xs text-gray-500">
+                    PNG, JPEG, WebP, MP4 or WebM, up to 10 MB. Short clips
+                    compress well: ten seconds of H.264 is usually under 300 KB.
                   </span>
                   <input
                     ref={fileInputRef}
