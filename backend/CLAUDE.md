@@ -44,6 +44,19 @@ guarantee `listPublicEntries()` gives seed entries.
 
 ## CORS (the confusing-failure trap)
 
+**`ACCESS-CONTROL-EXPOSE-HEADERS` harus tetap ada di `allowHeaders`
+(2026-08-08).** `@x402/fetch` menyalin header respons 402 ke request retry,
+jadi request berbayar tiba membawa `Access-Control-Expose-Headers` — header
+respons yang berjalan sebagai header request. curl dan CLI tidak peduli
+karena keduanya tidak menegakkan CORS; browser menolak mengirim request
+yang nama headernya tidak ada di `Access-Control-Allow-Headers`, lalu
+melaporkannya sebagai "CORS error"/"Failed to fetch" dengan respons kosong
+dan **nol jejak di log server**. Itulah sebabnya CLI bisa membeli prompt
+yang browser tidak bisa, ke endpoint yang sama dengan tanda tangan yang
+sama. Diukur langsung dari origin frontend terdeploy: tanpa header itu 402,
+dengan header itu `Failed to fetch`. Dipatok `src/middleware/cors.test.ts`.
+
+
 `src/middleware/cors.ts` exposes `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE`
 and allows `PAYMENT-SIGNATURE`. Browsers null out any cross-origin response
 header not in `Access-Control-Expose-Headers` even though DevTools shows it
