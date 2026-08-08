@@ -108,6 +108,8 @@ describe("earnings page", () => {
     render(<EarningsPage />);
     await screen.findByRole("table");
 
+    // Earned still comes from the server; unclaimed now comes from the chain,
+    // which the stub reports as zero.
     expect(screen.getAllByText("$0.2925").length).toBeGreaterThan(0);
     expect(screen.queryByText("292500")).toBeNull();
   });
@@ -132,7 +134,9 @@ describe("earnings page", () => {
 
     const claim = await screen.findByRole("button", { name: /claim/i });
     expect((claim as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/read from the contract/)).toBeTruthy();
+    // Both the stat caption and the control say where the figure comes from,
+    // so the assertion counts rather than expecting a single match.
+    expect(screen.getAllByText(/read from the contract/).length).toBeGreaterThan(0);
   });
 
   it("points a creator with no listings at the listing page", async () => {

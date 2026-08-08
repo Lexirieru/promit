@@ -36,6 +36,15 @@ export const REGISTRY_ABI = [
   },
 ] as const;
 
+const CLAIMED_EVENT = {
+  type: "event",
+  name: "CreatorClaimed",
+  inputs: [
+    { name: "creator", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+  ],
+} as const;
+
 type Phase =
   | { name: "loading" }
   | { name: "ready"; claimable: bigint }
@@ -44,7 +53,12 @@ type Phase =
   | { name: "done"; hash: `0x${string}`; amount: bigint }
   | { name: "failed"; message: string; claimable: bigint };
 
-export default function ClaimButton() {
+export interface ClaimButtonProps {
+  /** Fires with the chain's own figures whenever they change. */
+  onChainState?: (state: { claimable: bigint; claimed: bigint }) => void;
+}
+
+export default function ClaimButton({ onChainState }: ClaimButtonProps = {}) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -52,13 +66,35 @@ export default function ClaimButton() {
 
   const readClaimable = useCallback(async (): Promise<bigint> => {
     if (!publicClient || !address) return 0n;
-    return publicClient.readContract({
+    const claimable = await publicClient.readContract({
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
       functionName: "claimableOf",
       args: [address],
     });
-  }, [publicClient, address]);
+
+    // Claimed comes from the contract's own events, not from our database:
+    // a withdrawal happens on chain and nothing tells the server about it, so
+    // the server's copy would keep showing money the creator already holds.
+    // The window is bounded because public RPCs cap eth_getLogs ranges.
+    let claimed = 0n;
+    try {
+      const head = await publicClient.getBlockNumber();
+      const logs = await publicClient.getLogs({
+        address: REGISTRY_ADDRESS,
+        event: CLAIMED_EVENT,
+        args: { creator: address },
+        fromBlock: head > 1500n ? head - 1500n : 0n,
+        toBlock: head,
+      });
+      claimed = logs.reduce((sum, log) => sum + ((log.args as { amount?: bigint }).amount ?? 0n), 0n);
+    } catch {
+      // A refused log query must not break the claim control it sits next to.
+    }
+
+    onChainState?.({ claimable, claimed });
+    return claimable;
+  }, [publicClient, address, onChainState]);
 
   useEffect(() => {
     if (!isConnected || !address) return;

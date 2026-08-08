@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import { useAccount } from "wagmi";
@@ -34,6 +34,14 @@ export default function EarningsPage() {
   const { address, isConnected } = useAccount();
   const [load, setLoad] = useState<LoadState>({ phase: "pending" });
   const [attempt, setAttempt] = useState(0);
+  // The chain is the authority on what has been withdrawn: a claim happens on
+  // chain and nothing reports it back, so the server's "unclaimed" keeps
+  // showing money the creator is already holding.
+  const [chain, setChain] = useState<{ claimable: bigint; claimed: bigint } | null>(null);
+  const onChainState = useCallback(
+    (next: { claimable: bigint; claimed: bigint }) => setChain(next),
+    [],
+  );
 
   useEffect(() => {
     if (!address) return;
@@ -137,19 +145,22 @@ export default function EarningsPage() {
               aria-label="Totals"
               className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4"
             >
-              <Stat label="Prompts listed" value={String(load.data.totals.listings)} />
               <Stat label="Purchases" value={String(load.data.totals.sales)} />
               <Stat label="Earned" value={formatUsdc(load.data.totals.netAtomic)} />
+              <Stat label="Claimed" value={formatUsdc((chain?.claimed ?? 0n).toString())} />
               <Stat
                 label="Unclaimed"
-                value={formatUsdc(load.data.totals.claimableAtomic)}
+                value={formatUsdc(
+                  (chain ? chain.claimable : BigInt(load.data.totals.claimableAtomic)).toString(),
+                )}
                 emphasis
               />
             </dl>
 
             <p className="mb-4 text-xs text-gray-500">
               Earned is what buyers paid minus the {load.data.feeLabel} protocol
-              fee. Unclaimed is what has not reached your wallet yet.
+              fee, counted by Prom It. Claimed and unclaimed are read from the
+              contract, which is what actually holds and releases the money.
             </p>
 
             <div className="overflow-x-auto rounded-2xl border border-gray-200">
@@ -193,7 +204,7 @@ export default function EarningsPage() {
                 table above: the table is Prom It's accounting, the contract is
                 what will actually pay. */}
             <div className="mt-6">
-              <ClaimButton />
+              <ClaimButton onChainState={onChainState} />
             </div>
           </>
         )}
