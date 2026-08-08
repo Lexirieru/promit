@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { MediaFetchError, fetchRemoteMedia } from "./fetch-media.ts";
+import { MediaFetchError, fetchRemoteMedia, type MediaFetch } from "./fetch-media.ts";
 
 /**
  * A server that fetches a URL on request is an SSRF primitive. These tests are
@@ -14,9 +14,9 @@ const ok = (body: Uint8Array | string, contentType = "video/mp4") =>
 const redirect = (to: string) =>
   new Response(null, { status: 302, headers: { Location: to } });
 
-const fetchOnce = (response: Response) => (async () => response) as typeof globalThis.fetch;
+const fetchOnce = (response: Response): MediaFetch => (async () => response);
 
-const options = (fetchImpl: typeof globalThis.fetch) => ({
+const options = (fetchImpl: MediaFetch) => ({
   maxBytes: 1_000,
   fetchImpl,
   timeoutMs: 1_000,
@@ -61,10 +61,10 @@ describe("scheme and address guards", () => {
 
   test("a malformed URL is refused before any request", async () => {
     let called = false;
-    const spy = (async () => {
+    const spy: MediaFetch = async () => {
       called = true;
       return ok("x");
-    }) as typeof globalThis.fetch;
+    };
 
     await expect(fetchRemoteMedia("not a url", options(spy))).rejects.toMatchObject({
       code: "invalid_url",
@@ -77,10 +77,10 @@ describe("redirects", () => {
   test("a redirect to a private address is refused, not followed", async () => {
     // The whole reason redirects are followed manually: a public first hop
     // bouncing to metadata would pass a check done only on the original host.
-    const impl = (async (input: URL | string) =>
+    const impl: MediaFetch = async (input) =>
       String(input).includes("169.254")
         ? ok("secret")
-        : redirect("http://169.254.169.254/latest/meta-data/")) as typeof globalThis.fetch;
+        : redirect("http://169.254.169.254/latest/meta-data/");
 
     await expect(
       fetchRemoteMedia("http://8.8.8.8/preview.mp4", options(impl)),
@@ -88,7 +88,7 @@ describe("redirects", () => {
   });
 
   test("gives up rather than following a redirect loop forever", async () => {
-    const impl = (async () => redirect("http://8.8.8.8/again")) as typeof globalThis.fetch;
+    const impl: MediaFetch = async () => redirect("http://8.8.8.8/again");
 
     await expect(
       fetchRemoteMedia("http://8.8.8.8/start", { ...options(impl), maxRedirects: 2 }),
@@ -97,10 +97,10 @@ describe("redirects", () => {
 
   test("follows a redirect between public hosts", async () => {
     let hops = 0;
-    const impl = (async () => {
+    const impl: MediaFetch = async () => {
       hops += 1;
       return hops === 1 ? redirect("http://1.1.1.1/final.mp4") : ok(new Uint8Array([1, 2, 3]));
-    }) as typeof globalThis.fetch;
+    };
 
     const result = await fetchRemoteMedia("http://8.8.8.8/start", options(impl));
 
@@ -151,9 +151,9 @@ describe("failures", () => {
   });
 
   test("a thrown transport error surfaces as a typed refusal", async () => {
-    const impl = (async () => {
+    const impl: MediaFetch = async () => {
       throw new Error("connection reset");
-    }) as typeof globalThis.fetch;
+    };
 
     await expect(fetchRemoteMedia("http://8.8.8.8/x.mp4", options(impl))).rejects.toBeInstanceOf(
       MediaFetchError,

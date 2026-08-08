@@ -112,12 +112,18 @@ async function assertPublicHost(rawHostname: string): Promise<void> {
   }
 }
 
+/**
+ * Only what this module calls. Narrower than `typeof fetch` on purpose: the
+ * real type carries `preconnect`, which every test double would have to forge.
+ */
+export type MediaFetch = (input: URL | string, init?: RequestInit) => Promise<Response>;
+
 export interface FetchMediaOptions {
   maxBytes: number;
   timeoutMs?: number;
   maxRedirects?: number;
   /** Injected in tests; defaults to global fetch. */
-  fetchImpl?: typeof globalThis.fetch;
+  fetchImpl?: MediaFetch;
 }
 
 export interface FetchedMedia {
