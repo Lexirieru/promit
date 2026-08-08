@@ -137,11 +137,20 @@ export default function UnlockButton({ entry }: { entry: PublicCatalogEntry }) {
           },
         });
       } else {
+        // @x402/fetch re-wraps downstream failures as plain Errors, so an
+        // unrecognised class here is the common case, not the rare one.
+        // Swallowing its message left "unlock failed" as the only signal a
+        // user or a maintainer ever saw, which made a proxy/config fault
+        // indistinguishable from a payment fault. Surface what actually threw.
+        console.error("[unlock] unrecognised failure", error);
+        const detail = error instanceof Error ? error.message : String(error);
         setPhase({
           name: "idle",
           notice: {
             kind: "failed",
-            message: "The unlock failed unexpectedly and the prompt stays locked. Try again.",
+            message: detail
+              ? `The unlock failed and the prompt stays locked: ${detail}`
+              : "The unlock failed unexpectedly and the prompt stays locked. Try again.",
           },
         });
       }
