@@ -107,12 +107,40 @@ export function createApp(options: AppOptions = {}) {
  * header would be a way to make us mint requirements for the wrong resource.
  */
 export function forwardedProtoFetch(handler: (req: Request) => Response | Promise<Response>) {
-  return (request: Request): Response | Promise<Response> => {
-    if (request.headers.get("x-forwarded-proto") !== "https") return handler(request);
-    const url = new URL(request.url);
-    if (url.protocol === "https:") return handler(request);
-    url.protocol = "https:";
-    return handler(new Request(url.toString(), request));
+  return async (request: Request): Promise<Response> => {
+    let req = request;
+    if (request.headers.get("x-forwarded-proto") === "https") {
+      const url = new URL(request.url);
+      if (url.protocol !== "https:") {
+        url.protocol = "https:";
+        req = new Request(url.toString(), request);
+      }
+    }
+
+    try {
+      return await handler(req);
+    } catch (error) {
+      // An error that escapes Hono never passes through the CORS middleware,
+      // so the runtime answers with a bare 500 and the browser reports it as
+      // a CORS failure. That is how a crash on the settle path came to look
+      // like a cross-origin misconfiguration. Answer with CORS headers so the
+      // real message reaches the client, and log it server-side.
+      console.error("[fatal] unhandled error escaped the app:", error);
+      return new Response(
+        JSON.stringify({
+          error: "internal_error",
+          message: error instanceof Error ? error.message : String(error),
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "PAYMENT-REQUIRED,PAYMENT-RESPONSE",
+          },
+        },
+      );
+    }
   };
 }
 
