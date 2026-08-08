@@ -7,6 +7,7 @@ import { loadCatalogFile } from "./catalog/index.ts";
 import { openDb } from "./db.ts";
 import { paymentCors } from "./middleware/cors.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
+import { creatorRoutes } from "./routes/creators.ts";
 import { listingRoutes } from "./routes/listings.ts";
 import { createPayoutChain } from "./payouts/chain";
 import { runPayouts } from "./payouts/index";
@@ -70,6 +71,11 @@ export function createApp(options: AppOptions = {}) {
   // submit multipart bertanda tangan EIP-191. Upload media mendarat di
   // media/uploads/ (gitignored) dan tersaji lewat route /media/* di bawah.
   app.route("/v1/listings", listingRoutes({ catalog, db }));
+
+  // Sisi kreator dari data yang sama: apa yang dia list, siapa yang
+  // membeli, berapa yang terkumpul. Tanpa ini kreator buta terhadap
+  // penjualannya sendiri.
+  app.route("/v1/creators", creatorRoutes({ db }));
 
   // R5: previews come from Promit-owned storage. backend/media/ is the
   // mirror output U2 committed; catalog media fields are /media/<file>.
