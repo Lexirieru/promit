@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { Hono } from "hono";
 import type { CatalogFile } from "../catalog/index.ts";
+import { MediaFetchError, fetchRemoteMedia } from "../catalog/fetch-media.ts";
 import { listPublicEntries } from "../catalog/index.ts";
 import {
   ACCEPTED_MEDIA_TYPES,
@@ -105,21 +106,13 @@ export function listingRoutes(deps: ListingRouteDeps) {
       );
     }
 
-    // Media HARUS berupa upload. String di field media adalah URL kiriman —
-    // justru hal yang dilarang R5 — jadi ditolak dengan namanya sendiri,
-    // bukan digeneralisasi sebagai "field tidak valid".
+    // Media boleh berupa upload ATAU URL yang kami salin sendiri. R5 tidak
+    // melarang kreator menempelkan link — yang dilarang adalah KATALOG
+    // menyimpan alamat pihak ketiga, karena pemiliknya bisa mengganti isinya
+    // setelah pembeli membayar untuk melihatnya. URL diunduh di sini, byte-nya
+    // jadi milik kami, dan katalog tetap hanya menyimpan /media/... sendiri.
     const media = form.get("media");
-    if (typeof media === "string" && media.length > 0) {
-      return c.json(
-        {
-          error: "media_must_be_upload",
-          message:
-            "Preview media must be an uploaded file. URLs are not accepted; " +
-            "previews are served from Promit-owned storage only.",
-        },
-        400,
-      );
-    }
+    const mediaUrl = typeof media === "string" ? media.trim() : "";
 
     const rawFields: Record<string, unknown> = {};
     for (const name of [
@@ -145,16 +138,16 @@ export function listingRoutes(deps: ListingRouteDeps) {
         fieldErrors[field] ??= issue.message;
       }
     }
-    if (!(media instanceof File) || media.size === 0) {
-      fieldErrors.media ??= "Preview media upload is required.";
-    } else if (media.size > MAX_MEDIA_BYTES) {
+    const hasUpload = media instanceof File && media.size > 0;
+    if (!hasUpload && mediaUrl === "") {
+      fieldErrors.media ??= "Upload a preview file or paste a link to one.";
+    } else if (hasUpload && (media as File).size > MAX_MEDIA_BYTES) {
       fieldErrors.media ??= `Preview media must be at most ${MAX_MEDIA_BYTES} bytes.`;
     }
     if (Object.keys(fieldErrors).length > 0) {
       return c.json(validationError(fieldErrors), 400);
     }
     const fields = parsed.data as ListingFields;
-    const mediaFile = media as File;
 
     // Batas harga terpublikasi ditegakkan di sini; jawabannya MEMUAT batas
     // itu sendiri supaya klien non-browser tahu rentangnya tanpa menebak.
@@ -169,8 +162,33 @@ export function listingRoutes(deps: ListingRouteDeps) {
       );
     }
 
-    const mediaBytes = new Uint8Array(await mediaFile.arrayBuffer());
-    const classified = classifyMediaUpload(mediaBytes, mediaFile.type);
+    // A link is downloaded before anything else touches storage, and the
+    // bytes it produced are validated by exactly the same magic-byte check an
+    // upload gets — a remote server's Content-Type is a claim, not evidence.
+    let mediaBytes: Uint8Array;
+    let declaredType: string;
+    if (hasUpload) {
+      const mediaFile = media as File;
+      mediaBytes = new Uint8Array(await mediaFile.arrayBuffer());
+      declaredType = mediaFile.type;
+    } else {
+      try {
+        const fetched = await fetchRemoteMedia(mediaUrl, { maxBytes: MAX_MEDIA_BYTES });
+        mediaBytes = fetched.bytes;
+        declaredType = fetched.contentType.split(";")[0]!.trim();
+      } catch (error) {
+        if (error instanceof MediaFetchError) {
+          // The creator's own message: they can fix a bad link, and a generic
+          // "invalid media" would not tell them which part to fix.
+          return c.json(
+            { error: "media_fetch_failed", message: error.message, reason: error.code },
+            400,
+          );
+        }
+        throw error;
+      }
+    }
+    const classified = classifyMediaUpload(mediaBytes, declaredType);
     if (!classified) {
       return c.json(
         validationError({

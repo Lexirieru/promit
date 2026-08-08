@@ -311,16 +311,42 @@ describe("POST /v1/listings — validasi field", () => {
   });
 });
 
-describe("POST /v1/listings — media wajib upload (R5)", () => {
-  test("string URL di field media ditolak dengan namanya sendiri", async () => {
+describe("POST /v1/listings — media harus jadi milik kami (R5)", () => {
+  test("URL ke alamat internal ditolak, tidak diunduh", async () => {
+    // Link kini diterima dan DISALIN, tapi hanya dari alamat publik: server
+    // yang mengunduh URL kiriman pengguna adalah primitif SSRF, dan endpoint
+    // metadata cloud ada di 169.254.169.254.
     const app = makeApp();
     const fields = await signedSubmission();
-    const res = await postListing(app, formFrom(fields, "https://evil.example/beacon.gif"));
+    const res = await postListing(
+      app,
+      formFrom(fields, "http://169.254.169.254/latest/meta-data/"),
+    );
     expect(res.status).toBe(400);
-    const data = (await res.json()) as { error: string };
-    expect(data.error).toBe("media_must_be_upload");
+    const data = (await res.json()) as { error: string; reason: string };
+    expect(data.error).toBe("media_fetch_failed");
+    expect(data.reason).toBe("blocked_host");
+    // Tidak ada byte yang mendarat, dan tidak ada listing yang lahir.
     expect(listListings(db)).toHaveLength(0);
     expect(uploadedFiles()).toHaveLength(0);
+  });
+
+  test("URL berskema file: ditolak sebelum ada permintaan", async () => {
+    const app = makeApp();
+    const fields = await signedSubmission();
+    const res = await postListing(app, formFrom(fields, "file:///etc/passwd"));
+    expect(res.status).toBe(400);
+    expect((await res.json() as { reason: string }).reason).toBe("blocked_scheme");
+    expect(uploadedFiles()).toHaveLength(0);
+  });
+
+  test("tanpa upload dan tanpa URL, media diminta dengan jelas", async () => {
+    const app = makeApp();
+    const fields = await signedSubmission();
+    const res = await postListing(app, formFrom(fields, ""));
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { fields: Record<string, string> };
+    expect(data.fields.media).toContain("Upload a preview file or paste a link");
   });
 
   test("byte HTML berlabel image/webp ditolak — magic bytes wajib cocok", async () => {
