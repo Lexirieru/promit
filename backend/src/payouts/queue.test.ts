@@ -37,7 +37,6 @@ function seedListing(id: string, priceAtomic = "100000"): void {
     contentHash: nextHash(),
     creatorAddress: CREATOR,
     signature: "0xsig",
-    createdAt: new Date("2026-08-08T00:00:00.000Z").toISOString(),
   });
 }
 

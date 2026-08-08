@@ -171,25 +171,28 @@ export function pendingNetTotal(db: Database): bigint {
  * innocent-looking `pending` row that the next scan would happily pay again.
  */
 export function markSending(db: Database, payer: string, nonce: string): void {
-  db.run(
+  db.prepare(
     `UPDATE payouts SET status = 'sending', attempts = attempts + 1
       WHERE payer = $payer AND payment_nonce = $nonce AND status = 'pending'`,
+  ).run(
     { payer: payer.toLowerCase(), nonce: nonce },
   );
 }
 
 export function markSent(db: Database, payer: string, nonce: string, txHash: string): void {
-  db.run(
+  db.prepare(
     `UPDATE payouts SET status = 'sent', tx_hash = $txHash, last_error = NULL
       WHERE payer = $payer AND payment_nonce = $nonce`,
+  ).run(
     { payer: payer.toLowerCase(), nonce: nonce, txHash: txHash },
   );
 }
 
 export function markFlagged(db: Database, payer: string, nonce: string, reason: string): void {
-  db.run(
+  db.prepare(
     `UPDATE payouts SET status = 'flagged', last_error = $reason
       WHERE payer = $payer AND payment_nonce = $nonce`,
+  ).run(
     { payer: payer.toLowerCase(), nonce: nonce, reason: reason },
   );
 }
