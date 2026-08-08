@@ -8,6 +8,8 @@ import { openDb } from "./db.ts";
 import { paymentCors } from "./middleware/cors.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { listingRoutes } from "./routes/listings.ts";
+import { createPayoutChain } from "./payouts/chain";
+import { runPayouts } from "./payouts/index";
 import { unlockRoutes } from "./routes/unlock.ts";
 import { unlocksRoutes } from "./routes/unlocks.ts";
 
@@ -180,9 +182,58 @@ export function forwardedProtoFetch(handler: (req: Request) => Response | Promis
   };
 }
 
+/**
+ * How often the payout worker looks for newly delivered unlocks. Creators are
+ * paid within a minute of a sale without the buyer ever waiting on a transfer.
+ */
+const PAYOUT_INTERVAL_MS = 60_000;
+
+/**
+ * Starts the creator payout worker when a treasury key is configured.
+ *
+ * Opt-in by env: with no key the API runs exactly as before and payouts simply
+ * accrue in the table, which is what keeps local development and tests from
+ * needing a funded wallet.
+ *
+ * Running in-process is a deliberate trade the operator made. It means the
+ * server holds a hot wallet that controls all revenue, so a compromised
+ * backend can drain the treasury — the settler is kept deliberately weaker
+ * than this for exactly that reason. It buys automatic payouts on a host that
+ * runs one process. Moving this to its own service costs nothing but a second
+ * start command, and is the first thing to do if this stops being a testnet.
+ */
+function startPayoutWorker(db: ReturnType<typeof openDb>): void {
+  const treasuryPrivateKey = process.env.TREASURY_PRIVATE_KEY as `0x${string}` | undefined;
+  const payTo = process.env.PAY_TO_ADDRESS;
+  if (!treasuryPrivateKey || !payTo) {
+    console.log("[payouts] no TREASURY_PRIVATE_KEY/PAY_TO_ADDRESS — creator payouts will accrue unpaid");
+    return;
+  }
+
+  const chain = createPayoutChain({
+    treasuryPrivateKey,
+    rpcUrl: process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org",
+  });
+
+  const tick = async () => {
+    try {
+      await runPayouts({ db, chain, payTo });
+    } catch (error) {
+      // Never let a payout failure take the API down with it: the buyer's
+      // path does not depend on this, and a row left owed is recoverable.
+      console.error("[payouts] run failed:", error);
+    }
+  };
+
+  void tick();
+  setInterval(() => void tick(), PAYOUT_INTERVAL_MS).unref();
+}
+
 if (import.meta.main) {
-  const app = createApp();
+  const db = openDb();
+  const app = createApp({ db });
   const port = Number(process.env.PORT ?? DEFAULT_PORT);
   Bun.serve({ port, fetch: forwardedProtoFetch(app.fetch) });
   console.log(`Promit API listening on http://localhost:${port}`);
+  startPayoutWorker(db);
 }

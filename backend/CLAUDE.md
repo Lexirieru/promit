@@ -217,6 +217,39 @@ media, mirror upload) + `src/routes/listings.ts` (route), mounted
 - Tes menandatangani dengan kunci viem sungguhan dan menempuh tarian 402
   U4 di seam `FacilitatorClient` yang sama dengan `unlock.test.ts`.
 
+## Payout kreator (`src/payouts/`, 2026-08-08)
+
+Skema `exact` x402 menyelesaikan SATU transfer EIP-3009 ke SATU penerima, jadi
+pembayaran tidak bisa dipecah saat settlement. Treasury menerima bruto, lalu
+bagian kreator diteruskan di sini. `fee.ts` (aritmetika, 2,5% default lewat
+`PROMIT_FEE_BPS`), `queue.ts` (tabel `payouts`, PK `(payer, payment_nonce)`
+sama seperti `unlocks`), `chain.ts` (seam + preflight), `index.ts` (worker).
+
+Urutan per payout dan TIDAK boleh dibalik: tandai `sending` (ter-commit) →
+broadcast → confirm → tandai `sent`. Menandai setelah broadcast membuat baris
+milik proses yang mati tak bisa dibedakan dari yang belum pernah dicoba, dan
+scan berikutnya akan membayarnya lagi.
+
+- **`sending` tidak pernah di-retry otomatis.** Transfer USDC tidak punya
+  kunci idempotensi; proses yang mati di antara broadcast dan penulisan hash
+  meninggalkan dua kemungkinan yang tak terbedakan. Retry = bayar dua kali
+  (uang hilang); flag = lima menit kerja manusia dengan block explorer.
+- **Preflight menolak dengan alasan bernama.** `treasury_mismatch` yang
+  terpenting: pembeli membayar `PAY_TO_ADDRESS`, jadi kunci milik wallet lain
+  akan membayar kreator dari dompet yang salah sementara treasury diam-diam
+  menumpuk utang.
+- **Kekurangan dana meninggalkan baris `pending`, bukan `flagged`** — treasury
+  yang diisi ulang akan menguras antrean tanpa campur tangan siapa pun.
+- Sisa pembulatan selalu jatuh ke KREATOR, tidak pernah ke protokol.
+- Env: `TREASURY_PRIVATE_KEY` (tanpa ini payout menumpuk tak terbayar),
+  `PAY_TO_ADDRESS`, `BASE_SEPOLIA_RPC_URL`, opsional `PROMIT_FEE_BPS`.
+
+**Risiko yang diterima sadar:** worker jalan IN-PROCESS bersama API, jadi
+server memegang hot wallet yang menguasai seluruh pendapatan; backend yang
+diretas bisa menguras treasury. Settler sengaja dibuat lebih lemah dari ini.
+Memindahkannya ke service sendiri hanya butuh satu start command dan itu hal
+pertama yang harus dilakukan kalau ini berhenti jadi testnet.
+
 ## Settler on-chain (U10)
 
 `src/settler/` — `chain.ts` (seam `RegistryChain`: semua panggilan viem,
