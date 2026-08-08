@@ -45,7 +45,17 @@ function sale(promptId: string, buyer: string, nonce: string, deliver = true): v
   if (deliver) markUnlockDelivered(db, buyer, nonce, "0xsettletx");
 }
 
+interface Dashboard {
+  creator: string;
+  feeLabel: string;
+  totals: Record<string, string | number>;
+  listings: Record<string, string | number | null>[];
+}
+
 const get = (address: string) => createApp({ db }).request(`/v1/creators/${address}`);
+/** Typed read, so an assertion on a renamed field fails at compile time. */
+const dashboard = async (address: string): Promise<Dashboard> =>
+  (await (await get(address)).json()) as Dashboard;
 
 beforeEach(() => {
   db = openDb(":memory:");
@@ -57,7 +67,7 @@ describe("GET /v1/creators/:address", () => {
     sale("hero-a", BUYER_A, "0xn1");
     sale("hero-a", BUYER_B, "0xn2");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.listings).toHaveLength(1);
     expect(body.listings[0]).toMatchObject({
@@ -80,7 +90,7 @@ describe("GET /v1/creators/:address", () => {
     sale("hero-a", BUYER_A, "0xn1");
     sale("hero-a", BUYER_A, "0xn2");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.listings[0]).toMatchObject({ buyers: 1, sales: 2 });
   });
@@ -90,7 +100,7 @@ describe("GET /v1/creators/:address", () => {
     // and only one of them is true here.
     listing("hero-a");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.listings).toHaveLength(1);
     expect(body.listings[0]).toMatchObject({ buyers: 0, sales: 0, claimableAtomic: "0" });
@@ -100,7 +110,7 @@ describe("GET /v1/creators/:address", () => {
     listing("hero-a");
     sale("hero-a", BUYER_A, "0xn1", false); // pending: may never have settled
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.listings[0]).toMatchObject({ sales: 0, grossAtomic: "0" });
   });
@@ -111,7 +121,7 @@ describe("GET /v1/creators/:address", () => {
     enqueuePayouts(db, DEFAULT_FEE_BPS);
     markSent(db, BUYER_A, "0xn1", "0xpayout");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.listings[0]).toMatchObject({
       netAtomic: "97500",
@@ -126,9 +136,9 @@ describe("GET /v1/creators/:address", () => {
     listing("hero-b", OTHER_CREATOR);
     sale("hero-b", BUYER_A, "0xn1");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
-    expect(body.listings.map((l: { id: string }) => l.id)).toEqual(["hero-a"]);
+    expect(body.listings.map((l) => l.id)).toEqual(["hero-a"]);
     expect(body.totals.grossAtomic).toBe("0");
   });
 
@@ -136,8 +146,8 @@ describe("GET /v1/creators/:address", () => {
     listing("hero-a");
     sale("hero-a", BUYER_A, "0xn1");
 
-    const lower = await (await get(CREATOR.toLowerCase())).json();
-    const upper = await (await get(CREATOR.toUpperCase().replace("0X", "0x"))).json();
+    const lower = await dashboard(CREATOR.toLowerCase());
+    const upper = await dashboard(CREATOR.toUpperCase().replace("0X", "0x"));
 
     expect(upper.totals).toEqual(lower.totals);
   });
@@ -148,7 +158,7 @@ describe("GET /v1/creators/:address", () => {
     sale("hero-a", BUYER_A, "0xn1");
     sale("hero-b", BUYER_B, "0xn2");
 
-    const body = await (await get(CREATOR)).json();
+    const body = await dashboard(CREATOR);
 
     expect(body.totals).toMatchObject({
       listings: 2,
@@ -171,7 +181,7 @@ describe("GET /v1/creators/:address", () => {
     const response = await get(OTHER_CREATOR);
 
     expect(response.status).toBe(200);
-    expect((await response.json()).listings).toEqual([]);
+    expect((await dashboard(OTHER_CREATOR)).listings).toEqual([]);
   });
 
   test("never returns prompt text", async () => {
