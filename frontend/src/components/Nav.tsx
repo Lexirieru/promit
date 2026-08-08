@@ -16,6 +16,7 @@ import { Menu, X } from "lucide-react";
 const NAV_LINKS: { label: string; href: string }[] = [
   { label: "Gallery", href: "/prompts" },
   { label: "For Creators", href: "/list" },
+  { label: "Earnings", href: "/earnings" },
 ];
 
 export default function Nav() {

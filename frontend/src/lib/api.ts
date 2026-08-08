@@ -35,6 +35,8 @@ const ENDPOINTS = {
   prompt: (id: string) => `${API_BASE}/v1/prompts/${encodeURIComponent(id)}`,
   /** Delivered unlocks of one wallet — metadata only, never prompt text. */
   unlocks: (payer: string) => `${API_BASE}/v1/unlocks?payer=${encodeURIComponent(payer)}`,
+  /** A creator's own listings with buyer counts and earnings. */
+  creator: (address: string) => `${API_BASE}/v1/creators/${encodeURIComponent(address)}`,
 } as const;
 
 /** Canonical category list, mirroring `CategorySchema` in the backend.
@@ -172,4 +174,50 @@ export function formatUsdc(priceAtomic: string): string {
   const trimmed = frac.replace(/0+$/, "");
   const cents = trimmed.length <= 2 ? frac.slice(0, 2) : trimmed;
   return `$${whole}.${cents}`;
+}
+
+/** One listing as its creator sees it: who bought, and what it earned. */
+export interface CreatorListing {
+  id: string;
+  title: string;
+  category: Category;
+  priceAtomic: string;
+  media: string | null;
+  mediaType: MediaType;
+  poster: string | null;
+  /** Distinct wallets. */
+  buyers: number;
+  /** Delivered unlocks; one wallet buying twice counts twice. */
+  sales: number;
+  grossAtomic: string;
+  feeAtomic: string;
+  netAtomic: string;
+  paidAtomic: string;
+  claimableAtomic: string;
+}
+
+export interface CreatorDashboard {
+  creator: string;
+  feeBps: number;
+  feeLabel: string;
+  totals: {
+    listings: number;
+    sales: number;
+    buyers: number;
+    grossAtomic: string;
+    feeAtomic: string;
+    netAtomic: string;
+    paidAtomic: string;
+    claimableAtomic: string;
+  };
+  listings: CreatorListing[];
+}
+
+/**
+ * What one wallet has listed and earned. Unsigned on purpose — every field is
+ * already public on-chain, and requiring a signature to read your own sales
+ * would put a wallet prompt in front of a page that only shows numbers.
+ */
+export async function fetchCreatorDashboard(address: string): Promise<CreatorDashboard> {
+  return getJson<CreatorDashboard>(ENDPOINTS.creator(address));
 }
