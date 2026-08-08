@@ -76,18 +76,37 @@ export function createApp(options: AppOptions = {}) {
     // Runtime uploads may live on a different disk than the committed seed
     // media; the URL space stays one namespace so catalog `media` fields and
     // the traversal guard below are unchanged.
-    const root = requested.startsWith(UPLOADS_PREFIX) ? UPLOADS_ROOT : MEDIA_DIR;
-    const resolved = normalize(join(root, requested));
-    // join() collapses "..", so anything escaping the root no longer carries
-    // the prefix — reject instead of serving files outside it.
-    if (!resolved.startsWith(root + sep)) {
-      return c.json(
-        { error: "invalid_media_path", message: "Media path is not valid." },
-        404,
-      );
+    // Uploads are looked up on the mounted disk first, then in the committed
+    // tree. The fallback is what makes a lost upload recoverable: a volume
+    // cannot be written to from a deploy, so restoring a file any other way
+    // means shell access to production. Committing it under the same relative
+    // path ships it with the build instead, and a later runtime upload of the
+    // same id still wins because the disk is consulted first.
+    const roots =
+      requested.startsWith(UPLOADS_PREFIX) && UPLOADS_ROOT !== MEDIA_DIR
+        ? [UPLOADS_ROOT, MEDIA_DIR]
+        : [requested.startsWith(UPLOADS_PREFIX) ? UPLOADS_ROOT : MEDIA_DIR];
+
+    let found: ReturnType<typeof Bun.file> | null = null;
+    for (const root of roots) {
+      const resolved = normalize(join(root, requested));
+      // join() collapses "..", so anything escaping the root no longer carries
+      // the prefix — reject instead of serving files outside it. Checked per
+      // root: a traversal must not be rescued by the next candidate.
+      if (!resolved.startsWith(root + sep)) {
+        return c.json(
+          { error: "invalid_media_path", message: "Media path is not valid." },
+          404,
+        );
+      }
+      const candidate = Bun.file(resolved);
+      if (await candidate.exists()) {
+        found = candidate;
+        break;
+      }
     }
-    const file = Bun.file(resolved);
-    if (!(await file.exists())) {
+    const file = found;
+    if (!file) {
       return c.json(
         { error: "media_not_found", message: "No such media file." },
         404,

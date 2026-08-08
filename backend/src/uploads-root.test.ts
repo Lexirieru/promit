@@ -90,3 +90,51 @@ describe("PROMIT_UPLOADS_ROOT", () => {
     expect(DEFAULT_LISTING_MEDIA_DIR.endsWith(join("backend", "media"))).toBe(true);
   });
 });
+
+/**
+ * A file lost from the ephemeral disk cannot be put back by deploying: a
+ * mounted volume is not writable from a build. Committing it under the same
+ * serving path is the only recovery that does not need shell access to
+ * production, so the route falls back to the committed tree — while still
+ * preferring the disk, or a fresh upload would be shadowed by a stale copy.
+ */
+describe("committed fallback for uploads", () => {
+  test("serves a committed upload when the volume does not have it", async () => {
+    const root = await tempRoot(); // empty volume
+    process.env.PROMIT_UPLOADS_ROOT = root;
+
+    const response = await (await freshApp()).request(
+      "/media/uploads/floating-navbar-hero.mp4",
+    );
+
+    expect(response.status).toBe(200);
+    // Real bytes, not an empty 200: the committed file is the recovery path,
+    // so an empty body here would restore the 404 in disguise.
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(bytes.byteLength).toBeGreaterThan(1000);
+    // ISO base media file signature ("ftyp" at offset 4) — an mp4, not a stub.
+    expect(String.fromCharCode(...bytes.slice(4, 8))).toBe("ftyp");
+  });
+
+  test("the volume wins when both have the file", async () => {
+    const root = await tempRoot();
+    await mkdir(join(root, "uploads"), { recursive: true });
+    await writeFile(join(root, "uploads", "floating-navbar-hero.mp4"), "fresher-upload");
+    process.env.PROMIT_UPLOADS_ROOT = root;
+
+    const response = await (await freshApp()).request(
+      "/media/uploads/floating-navbar-hero.mp4",
+    );
+
+    expect(await response.text()).toBe("fresher-upload");
+  });
+
+  test("traversal is still refused with the fallback in place", async () => {
+    const root = await tempRoot();
+    process.env.PROMIT_UPLOADS_ROOT = root;
+
+    const response = await (await freshApp()).request("/media/uploads/../../etc/passwd");
+
+    expect(response.status).toBe(404);
+  });
+});

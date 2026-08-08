@@ -8,3 +8,9 @@ data/*.sqlite-shm
 bun.lock
 # U7: upload media kreator (runtime) — hanya output mirror seed yang di-commit
 media/uploads/
+# Exception: a creator upload restored by hand after it was lost from the
+# ephemeral disk. A mounted volume cannot be written to from a deploy, so
+# committing the file under its serving path is the only way to ship it.
+# The route prefers the volume, so a fresh runtime upload still wins.
+!media/uploads/floating-navbar-hero.mp4
+
