@@ -4,7 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const account = vi.hoisted(() => ({
   current: { address: undefined as string | undefined, isConnected: false },
 }));
-vi.mock("wagmi", () => ({ useAccount: () => account.current }));
+vi.mock("wagmi", () => ({
+  useAccount: () => account.current,
+  // Escrow reads/writes are exercised in claim-button.test.tsx; here the
+  // dashboard is under test, so the chain is stubbed to an empty balance.
+  usePublicClient: () => ({
+    readContract: async () => 0n,
+    waitForTransactionReceipt: async () => ({ status: "success" }),
+  }),
+  useWriteContract: () => ({ writeContractAsync: async () => "0xhash" }),
+}));
 vi.mock("@/components/WalletButton", () => ({
   default: () => <button type="button">Connect wallet</button>,
 }));
@@ -112,16 +121,18 @@ describe("earnings page", () => {
     expect(screen.getByText(/2\.5% protocol/)).toBeTruthy();
   });
 
-  it("says claiming is not live instead of showing a button that cannot pay", async () => {
-    // A disabled claim control would read as a temporary outage rather than a
-    // feature that does not exist yet.
+  it("offers a claim whose figure comes from the contract, not the table", async () => {
+    // The table is Prom It's accounting; the contract is what will actually
+    // pay. With nothing credited on chain yet, the control must say so rather
+    // than promise the dashboard's number.
     stubFetch(dashboard());
 
     render(<EarningsPage />);
     await screen.findByRole("table");
 
-    expect(screen.getByText(/not live yet/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /claim/i })).toBeNull();
+    const claim = await screen.findByRole("button", { name: /claim/i });
+    expect((claim as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/read from the contract/)).toBeTruthy();
   });
 
   it("points a creator with no listings at the listing page", async () => {

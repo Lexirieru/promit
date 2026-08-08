@@ -6,6 +6,7 @@ import { RotateCcw } from "lucide-react";
 import { useAccount } from "wagmi";
 import Nav from "@/components/Nav";
 import WalletButton from "@/components/WalletButton";
+import ClaimButton from "@/components/ClaimButton";
 import {
   fetchCreatorDashboard,
   formatUsdc,
@@ -188,13 +189,12 @@ export default function EarningsPage() {
               </table>
             </div>
 
-            {/* No claim control yet. A button that cannot move money is a
-                promise the page cannot keep, so the honest thing is to say
-                what is true today rather than render a disabled shape. */}
-            <p className="mt-4 text-xs text-gray-500">
-              Claiming to your own wallet is not live yet. Unclaimed earnings are
-              recorded against your address and stay owed to you.
-            </p>
+            {/* The claim reads its figure from the contract, not from the
+                table above: the table is Prom It's accounting, the contract is
+                what will actually pay. */}
+            <div className="mt-6">
+              <ClaimButton />
+            </div>
           </>
         )}
       </main>
