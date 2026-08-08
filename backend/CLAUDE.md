@@ -65,6 +65,27 @@ payment requirements and no tx hash while every request "succeeds". Keep
 U4's unlock route under this same middleware (`app.use("*", …)` already
 covers it).
 
+## Penyimpanan yang bertahan (Railway volume, 2026-08-08)
+
+Dua hal ditulis saat RUNTIME dan karenanya hilang saat container dibangun
+ulang: `data/promit.sqlite` (listing, paid body, unlock) dan upload kreator
+di `media/uploads/`. Media seed ikut ter-commit, jadi ia selalu kembali —
+akibatnya kegagalannya asimetris dan menyesatkan: baris listing bisa
+selamat sementara preview-nya 404, yang terbaca seperti listing rusak,
+bukan seperti storage hilang.
+
+- `PROMIT_DB_PATH` mengarahkan SQLite ke disk persisten.
+- `PROMIT_UPLOADS_ROOT` mengarahkan root yang memuat `uploads/`.
+
+**JANGAN mount volume di `backend/media`.** Direktori itu berisi media seed
+yang ter-commit; volume kosong akan menutupinya dan mematikan SELURUH
+preview lain — menukar satu preview mati dengan dua puluh tiga. Root upload
+sengaja dipisah, dan route `/media/*` memilih root berdasarkan prefiks
+`uploads/`. Dipatok `src/uploads-root.test.ts`.
+
+Satu volume Railway di `/data`, lalu:
+`PROMIT_DB_PATH=/data/promit.sqlite` dan `PROMIT_UPLOADS_ROOT=/data/media`.
+
 ## SQLite runtime store (`src/db.ts`, KTD17)
 
 `data/promit.sqlite`, gitignored, WAL. Three tables, three writers:

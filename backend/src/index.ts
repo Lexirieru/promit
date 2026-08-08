@@ -21,6 +21,19 @@ import { unlocksRoutes } from "./routes/unlocks.ts";
 
 const MEDIA_DIR = fileURLToPath(new URL("../media", import.meta.url));
 
+/**
+ * Creator uploads (U7) are the only media written at runtime, so they are the
+ * only media a container rebuild can lose. `PROMIT_UPLOADS_ROOT` points them
+ * at a persistent disk; unset, they stay where they have always been.
+ *
+ * Kept as a SEPARATE root from MEDIA_DIR: a volume mounted over `backend/media`
+ * would shadow the committed seed media with an empty directory and break every
+ * other preview. Mirrors `DEFAULT_LISTING_MEDIA_DIR` in catalog/listing.ts,
+ * which is where the same files get written.
+ */
+const UPLOADS_ROOT = process.env.PROMIT_UPLOADS_ROOT ?? MEDIA_DIR;
+const UPLOADS_PREFIX = "uploads/";
+
 /** Frontend default base URL is http://localhost:3001 (locked contract). */
 export const DEFAULT_PORT = 3001;
 
@@ -60,10 +73,14 @@ export function createApp(options: AppOptions = {}) {
   // mirror output U2 committed; catalog media fields are /media/<file>.
   app.get("/media/*", async (c) => {
     const requested = decodeURIComponent(c.req.path.slice("/media/".length));
-    const resolved = normalize(join(MEDIA_DIR, requested));
-    // join() collapses "..", so anything escaping MEDIA_DIR no longer
-    // carries the prefix — reject instead of serving files outside it.
-    if (!resolved.startsWith(MEDIA_DIR + sep)) {
+    // Runtime uploads may live on a different disk than the committed seed
+    // media; the URL space stays one namespace so catalog `media` fields and
+    // the traversal guard below are unchanged.
+    const root = requested.startsWith(UPLOADS_PREFIX) ? UPLOADS_ROOT : MEDIA_DIR;
+    const resolved = normalize(join(root, requested));
+    // join() collapses "..", so anything escaping the root no longer carries
+    // the prefix — reject instead of serving files outside it.
+    if (!resolved.startsWith(root + sep)) {
       return c.json(
         { error: "invalid_media_path", message: "Media path is not valid." },
         404,

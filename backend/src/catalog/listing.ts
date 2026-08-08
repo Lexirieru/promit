@@ -46,9 +46,23 @@ export const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
  * traversal guard-nya) melayani keduanya.
  */
 export const LISTING_MEDIA_SUBDIR = "uploads";
-export const DEFAULT_LISTING_MEDIA_DIR = fileURLToPath(
-  new URL("../../media", import.meta.url),
-);
+/**
+ * Root that holds `uploads/`. Defaults to the committed `backend/media`, and
+ * `PROMIT_UPLOADS_ROOT` moves it onto a persistent disk.
+ *
+ * The override exists because creator uploads are the only media written at
+ * runtime: seed media is committed and returns with every build, so a host
+ * that rebuilds the container loses uploads alone — the listing row survives
+ * in SQLite while its preview 404s, which reads like a broken listing rather
+ * than missing storage.
+ *
+ * It is a separate root ON PURPOSE. Mounting a volume over `backend/media`
+ * would shadow the committed seed media with an empty directory and take
+ * every other preview down with it. The reader in `src/index.ts` splits on
+ * the same `uploads/` prefix — change one and change both.
+ */
+export const DEFAULT_LISTING_MEDIA_DIR =
+  process.env.PROMIT_UPLOADS_ROOT ?? fileURLToPath(new URL("../../media", import.meta.url));
 
 // ---------------------------------------------------------------------------
 // Payload kanonik + pesan EIP-191
