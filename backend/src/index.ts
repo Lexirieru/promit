@@ -91,9 +91,34 @@ export function createApp(options: AppOptions = {}) {
   return app;
 }
 
+/**
+ * Rebuild the request URL from `X-Forwarded-Proto` when a TLS-terminating
+ * proxy is in front of us.
+ *
+ * Railway (and every similar host) terminates TLS at the edge and forwards
+ * plain HTTP inwards, so `request.url` arrives as `http://…` even though the
+ * browser asked for `https://…`. x402 copies that URL verbatim into
+ * `resource.url` inside the 402 payload, and a browser client compares it
+ * against the URL it actually requested. The schemes disagree, the client
+ * refuses before it ever asks the wallet to sign, and the UI reports a
+ * generic "unlock failed" — a config artefact that reads like a payment bug.
+ *
+ * Only trust the header when it says https: downgrading on an attacker-set
+ * header would be a way to make us mint requirements for the wrong resource.
+ */
+export function forwardedProtoFetch(handler: (req: Request) => Response | Promise<Response>) {
+  return (request: Request): Response | Promise<Response> => {
+    if (request.headers.get("x-forwarded-proto") !== "https") return handler(request);
+    const url = new URL(request.url);
+    if (url.protocol === "https:") return handler(request);
+    url.protocol = "https:";
+    return handler(new Request(url.toString(), request));
+  };
+}
+
 if (import.meta.main) {
   const app = createApp();
   const port = Number(process.env.PORT ?? DEFAULT_PORT);
-  Bun.serve({ port, fetch: app.fetch });
+  Bun.serve({ port, fetch: forwardedProtoFetch(app.fetch) });
   console.log(`Promit API listening on http://localhost:${port}`);
 }
